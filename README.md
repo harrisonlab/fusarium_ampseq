@@ -139,3 +139,79 @@ for F_read in $(ls qc_dna/paired/*/*/*/*/F/*fq.gz); do
   printf "$Locus\t$Pool\t$Dilution\t$TechRep\t$ReadCount\n"
 done > qc_dna/reads_per_sample.tsv
 ```
+
+# Metabarcoding analysis
+
+These commands are based upon the workflow described at:
+https://github.com/eastmallingresearch/Metabarcoding_pipeline
+
+### Set pipeline variables
+
+```bash
+# set MBPL variable to pipeline folder
+MBPL=/home/deakig/metabarcoding_pipeline
+# to set permanetly for future (bash) shell sessions (be careful with this, if you have settings in ~/.profile they will no longer load)
+# echo export MBPL=~/metabarcoding_pipeline >>~/.bash_profile
+```
+
+Prerequesits:
+*HMM Preperation for ITS analysis*
+Greg has prepared hmm models to identify the 5.8s, ssu and lsu regions of
+the ITS region. These can be removed from the sequences before blast Searching
+for isolate taxonomy.
+*Taxonomy reference databases*
+Greg has downloaded the Unite V7 (fungi) and RDP trainset 15 (bacteria) reference databases from
+http://drive5.com/usearch/manual/utax_downloads.html
+Configuration has been tested with usearch8.1 (probably works the same for 10)
+
+
+Greg has also built an oomycota database combining three sets of data; 1) a subset (stamenopiles) of the silva_ssu database https://www.arb-silva.de/browser/, 2) a supplied 3rd party database 3) and a usearch specific Unite database (https://unite.ut.ee/sh_files/utax_reference_dataset_28.06.2017.zip)
+
+NOTE: It is now possible to download just the stramenopiles subset from silva
+
+# Common workflow
+
+## Set up project folders
+
+If the project has multiple sequencing runs, RUN should be set to location where files are to be stored.
+
+```shell
+PROJECT_FOLDER=/home/groups/harrisonlab/project_files/fusarium_ampseq
+mkdir -p $PROJECT_FOLDER
+ln -s $MBPL $PROJECT_FOLDER/metabarcoding_pipeline
+
+RUN=.
+mkdir -p $PROJECT_FOLDER/data/$RUN/fastq
+mkdir $PROJECT_FOLDER/data/$RUN/quality
+mkdir $PROJECT_FOLDER/data/$RUN/ambiguous
+
+for s in BAC FUN OO NEM; do
+  mkdir -p $PROJECT_FOLDER/data/$RUN/$s/fastq
+  mkdir $PROJECT_FOLDER/data/$RUN/$s/filtered
+  mkdir $PROJECT_FOLDER/data/$RUN/$s/unfiltered
+  mkdir $PROJECT_FOLDER/data/$RUN/$s/fasta
+done
+```
+Copy raw Fastq files (or link to) to $PROJECT_FOLDER/data/$RUN/fastq
+
+## Decompress files (not required, unless using none multiplexed data)
+
+Append 2 to decompress sym links
+
+```shell
+for FILE in $PROJECT_FOLDER/data/$RUN/fastq/*.gz; do
+  $PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c unzip $FILE 2
+done
+```
+
+## QC
+Qualtiy checking with fastQC (http://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
+```shell
+for FILE in $PROJECT_FOLDER/data/$RUN/fastq/*; do
+  $PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c qcheck $FILE $PROJECT_FOLDER/data/$RUN/quality
+done
+```
+
+
+
+```
