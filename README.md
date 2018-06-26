@@ -407,74 +407,72 @@ cd $WorkDir
 # qsub $SCRIPT_DIR/submit_taxonomy.sh $SCRIPT_DIR $@
 OTUs=clustering/ITS/ITS_OTUs.fa
 RefDb=$(ls databases/ITS/utax_fungi_ITS_sintax.udp)
-Prefix=$(echo $OTUs | cut -f2 -d '|')"_OTUs"
+# Prefix=$(echo $OTUs | cut -f2 -d '|')"_OTUs"
+Prefix=$(basename ${OTUs%.fa})
 OutDir=$(dirname $OTUs)
 ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-qsub $ProgDir/submit_taxonomy.sh $OTUs $RefDB $Prefix $OutDir
+qsub $ProgDir/submit_taxonomy.sh $OTUs $RefDb $Prefix $OutDir
 
 ```
 
 Create OTU tables
+
 ```bash
-# $PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c OTU $PROJECT_FOLDER $RUN $SSU 21 20
-```
-```bash
-Primers=primers.fa
-printf \
-">ITS_F
-GTGAATCATCGAATCTTTGAACGC
->ITS_R
-CCGCTTATTGATATGCTTAARTTCAG
->TEF_F
-GGTCACTTGATCTACCAGTGCG
->TEF_R
-CCCARGCGTACTTGAAGRAAC
->SIX_F
-GCTACTCAAAGTCGTGGACGAG
->SIX_R
-GGCAATATATTCCGTCCATTCTTGG
->FOCg17143_F
-CACTTCCTCACTTACTTTACCACTCC
->FOCg17143_F
-GTCATCGCAATCGCCKTCCG
->orthogroup_13890_F
-GCTGTCTTATCACTTATCAGCCTTG
->orthogroup_13890_R
-CGGTCTGATTTGGTGTCCAGTCG" \
-> $Primers
+  # Primers=primers.fa
+  # printf \
+  # ">ITS_F
+  # GTGAATCATCGAATCTTTGAACGC
+  # >ITS_R
+  # CCGCTTATTGATATGCTTAARTTCAG
+  # >TEF_F
+  # GGTCACTTGATCTACCAGTGCG
+  # >TEF_R
+  # CCCARGCGTACTTGAAGRAAC
+  # >SIX_F
+  # GCTACTCAAAGTCGTGGACGAG
+  # >SIX_R
+  # GGCAATATATTCCGTCCATTCTTGG
+  # >FOCg17143_F
+  # CACTTCCTCACTTACTTTACCACTCC
+  # >FOCg17143_F
+  # GTCATCGCAATCGCCKTCCG
+  # >orthogroup_13890_F
+  # GCTGTCTTATCACTTATCAGCCTTG
+  # >orthogroup_13890_R
+  # CGGTCTGATTTGGTGTCCAGTCG" \
+  # > $Primers
+  # ReadsF=$(ls demulti_dna/ITS/soil_pathogens/equimolar/1/*_R1_001_ITS.fq)
+  # ReadsR=$(echo $ReadsF | sed 's/_R1_/_R2_/g')
+  # Locus=$(echo $ReadsF | cut -f2 -d '/')
+  # OutDir=$(dirname $ReadsF)
+  #
+	# Prefix=$(echo $ReadsF | cut -f2,3,4,5 -d '/' | sed 's&/&_&g')
+  # Locus=$(echo $ReadsF | cut -f2 -d '/')
+  # FPL=$(cat $Primers | grep -A1 "${Locus}_F" | tail -n1 | wc -c)
+  # RPL=$(cat $Primers | grep -A1 "${Locus}_R" | tail -n1 | wc -c)
+  #
+  # OutF=$(basename ${ReadsF%.fq}_renamed.fa)
+  # OutR=$(basename ${ReadsF%.fq}_renamed.fa)
+  #
+  # #Variable Prefix and SL are given to awk to rename reads and trim them
+  # cat $ReadsF | awk -v S="$Prefix" -v SL="$SL" -F" " '{if(NR % 4 == 1){print ">" S "." count+1 ";"$1;count=count+1} if(NR % 4 == 2){$1=substr($1,(SL+1));print $1}}' > $OutDir/$OutF
+  # cat $ReadsR | awk -v S="$Prefix" -v SL="$SL" -F" " '{if(NR % 4 == 1){print ">" S "." count+1 ";"$1;count=count+1} if(NR % 4 == 2){$1=substr($1,(SL+1));print $1}}' > $OutDir/$OutR
+  # # The submit cat file script step of concatenating reads was not performed.
+  # # Presumably the step merges filtered and ambiguous reads.
 
-  FilteredReads=$(ls processed_dna/ITS/soil_pathogens/equimolar/1/filtered/ITS_soil_pathogens_equimolar_1.filtered.fa)
-  UnfilteredReads=$(ls processed_dna/ITS/soil_pathogens/equimolar/1/unfiltered/ITS_soil_pathogens_equimolar_1.unfiltered.fastq)
-  OutDir=$(basename $FilteredReads)
-	Prefix=$(echo $DataDir | cut -f2,3,4,5 -d '/' | sed 's&/&_&g')
-  Locus=$(echo $DataDir | cut -f2 -d '/')
-  FPL=$(cat $Primers | grep -A1 "${Locus}_F" | tail -n1 | wc -c)
-  RPL=$(cat $Primers | grep -A1 "${Locus}_R" | tail -n1 | wc -c)
+Locus=ITS
+Pool=soil_pathogens
+OutDir=quantified/$Locus/$Pool
+mkdir -p $OutDir
+cat processed_dna/$Locus/$Pool/*/*/merged/*.fa | cut -f1 -d '.' > $OutDir/${Locus}_reads_appended.fa
 
-	EP=both
-
-	JOBNAME=OTU_$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
-
-	cd $OutDir
-	dir=`mktemp -d -p $OutDir`
-	find $UNFILTDIR -name '*.fastq' >$dir/files.txt
-	TASKS=$(wc -l $dir/files.txt|awk -F" " '{print $1}')
-	qsub -N ${JOBNAME}_1 -t 1-$TASKS:1 $SCRIPT_DIR/submit_fastq_fasta.sh $dir/files.txt $dir $FPL $RPL $SCRIPT_DIR
-	qsub -hold_jid ${JOBNAME}_1 -N ${JOBNAME}_2 $SCRIPT_DIR/submit_cat_files.sh $dir $SCRIPT_DIR
-	qsub -hold_jid ${JOBNAME}_2 -N ${JOBNAME}_3 $SCRIPT_DIR/submit_global_search.sh $dir/t1.fa $OutDir $PREFIX otus plus
-	qsub -hold_jid ${JOBNAME}_2 -N ${JOBNAME}_4 $SCRIPT_DIR/submit_global_search.sh $dir/t1.fa $OutDir $PREFIX zotus plus
-
-	if $R2; then
-		find $UNFILTDIR -name '*.r2.*' >$dir/R2.files.txt			
-		TASKS=$(wc -l $dir/R2.files.txt|awk -F" " '{print $1}')
-		qsub -hold_jid ${JOBNAME}_3 -N ${JOBNAME}_4 -t 1-$TASKS:1 $SCRIPT_DIR/submit_search_hits.sh $dir/files.txt $dir $OutDir/$PREFIX.hits.out $SCRIPT_DIR
-		qsub -hold_jid ${JOBNAME}_4 -N ${JOBNAME}_5 $SCRIPT_DIR/submit_global_search.sh $dir/t3.fa $OutDir $PREFIX otus both
-		qsub -hold_jid ${JOBNAME}_4 -N ${JOBNAME}_6 $SCRIPT_DIR/submit_global_search.sh $dir/t3.fa $OutDir $PREFIX zotus both
-		qsub -hold_jid ${JOBNAME}_5,${JOBNAME}_6 $SCRIPT_DIR/submit_tidy.sh $dir $PREFIX.hits.out ${PREFIX}2.hits.out OTU_*_1.* OTU_*_4.*
-	else
-		qsub -hold_jid ${JOBNAME}_3,${JOBNAME}_4 $SCRIPT_DIR/submit_tidy.sh $dir $PREFIX.hits.out OTU_*_1.*
-	fi  
-
-	exit 1
-	;;
+QueryReads=$(ls $OutDir/${Locus}_reads_appended.fa)
+# Locus=$(echo $QueryReads | cut -f2 -d '/')
+OtuType=OTUs
+RefDb=$(ls clustering/$Locus/${Locus}_${OtuType}_taxa.fa)
+Prefix=$Locus
+# Prefix=$(echo $QueryReads | cut -f2,3,4,5 -d '/' | sed 's&/&_&g')
+# OutDir=quantified/$Locus
+ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
 ```
