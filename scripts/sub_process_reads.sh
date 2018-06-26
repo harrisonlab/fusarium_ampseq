@@ -104,14 +104,20 @@ $ProgDir/usearch -fastq_filter ${Prefix}.t3 -fastq_maxee $QUAL -relabel $Prefix 
 # Filter these potentially error-containing reads
 cat ${Prefix}.t3.fa | awk '/^>/ {printf("\n%s\n",$0);next; } { printf("%s",$0);}  END {printf("\n");}' | sed -e '1d' > ${Prefix}.filtered.fa
 
+
+# Prepare the unfiltered reads for later quantification steps:
+cat ${Prefix}.t3 | awk -v S="$Prefix" -F" " '{if(NR % 4 == 1){print ">" S "." count+1 ";"$1;count=count+1} if(NR % 4 == 2){print $1}}' > ${Prefix}_prefilter.fa
+
 # ---
 # Cleanup
 # ---
+mkdir -p $CurDir/$OutDir/merged
 mkdir -p $CurDir/$OutDir/filtered
 mkdir -p $CurDir/$OutDir/unfiltered
 
 mv *.log $CurDir/$OutDir/.
 mv ${Prefix}.filtered.fa $CurDir/$OutDir/filtered/.
 mv ${Prefix}.t3 $CurDir/$OutDir/unfiltered/${Prefix}.unfiltered.fastq
+mv ${Prefix}_prefilter.fa $CurDir/$OutDir/merged/.
 
 rm ${Prefix}.t1.txt ${Prefix}.t1 ${Prefix}.t3.fa
