@@ -24,6 +24,10 @@ $ProgDir/usearch -sintax $CurDir/$OTUs -db $CurDir/$RefDB -strand both -tabbedou
 ProgDir=/home/armita/git_repos/emr_repos/scripts/Metabarcoding_pipeline/scripts
 cat ${Prefix}.sintax | $ProgDir/mod_taxa_sintax.pl > ${Prefix}.taxa
 
+ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+$ProgDir/add_taxa.py --fasta $CurDir/$OTUs --taxa ${Prefix}.taxa > ${Prefix}_taxa.fa
+
 mkdir -p $CurDir/$OutDir
 mv ${Prefix}.sintax $CurDir/$OutDir/.
 mv ${Prefix}.taxa $CurDir/$OutDir/.
+mv ${Prefix}_taxa.fa $CurDir/$OutDir/.
