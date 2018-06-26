@@ -171,84 +171,13 @@ NOTE: It is now possible to download just the stramenopiles subset from silva
 
 # Common workflow
 
-## Set up project folders
-
-If the project has multiple sequencing runs, RUN should be set to location where files are to be stored.
-
-```shell
-PROJECT_FOLDER=/home/groups/harrisonlab/project_files/fusarium_ampseq
-mkdir -p $PROJECT_FOLDER
-ln -s $MBPL $PROJECT_FOLDER/metabarcoding_pipeline
-
-RUN=test
-mkdir -p $PROJECT_FOLDER/data/$RUN/fastq
-mkdir $PROJECT_FOLDER/data/$RUN/quality
-mkdir $PROJECT_FOLDER/data/$RUN/ambiguous
-
-for s in BAC FUN OO NEM; do
-  mkdir -p $PROJECT_FOLDER/data/$RUN/$s/fastq
-  mkdir $PROJECT_FOLDER/data/$RUN/$s/filtered
-  mkdir $PROJECT_FOLDER/data/$RUN/$s/unfiltered
-  mkdir $PROJECT_FOLDER/data/$RUN/$s/fasta
-done
-```
-<!--
-Copy raw Fastq files (or link to) to $PROJECT_FOLDER/data/$RUN/fastq
-
-## Decompress files (not required, unless using none multiplexed data)
-
-Append 2 to decompress sym links
-
-```shell
-for FILE in $PROJECT_FOLDER/data/$RUN/fastq/*.gz; do
-  $PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c unzip $FILE 2
-done
-```
-
-## QC
-Qualtiy checking with fastQC (http://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
-```shell
-for FILE in $PROJECT_FOLDER/data/$RUN/fastq/*; do
-  $PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c qcheck $FILE $PROJECT_FOLDER/data/$RUN/quality
-done
-``` -->
-
-
-
-
 ## Demultiplexing
 
-Script demulti.pl demultiplexs mixed (e.g. ITS and 16S) libraries based on the primer sequence. Number of acceptable mismatches in the primer sequence can be specified (0 by default). Any sequence which has too many mismatches, or none mathching primers is written to ambiguous.fq (f & r seperately). The script accepts multiple primer pairs.
+This script demultiplexs mixed (e.g. ITS and 16S) libraries based on the primer sequence. Any sequence which has mismatches is written to ambiguous.fq (f & r seperately). Primer sequences
+are detailed in the submission wrapper.
+*Note* Regex are used to describe degenerate bases in the primer.
 
-<table>
-Possible primers:
-<tr><td><td>Forward<td>Reverse</tr>
-<tr><td>Bacteria<td>CCTACGGGNGGCWGCAG<td>GACTACHVGGGTATCTAATCC</tr>
-<tr><td>Fungi<td>CTTGGTCATTTAGAGGAAGTAA<td>ATATGCTTAAGTTCAGCGGG</tr>
-<tr><td>Oomycete<td>GAAGGTGAAGTCGTAACAAGG<td>AGCGTTCTTCATCGATGTGC</tr>
-<tr><td>Nematode<td>CGCGAATRGCTCATTACAACAGC<td>GGCGGTATCTGATCGCC</tr>
-</table>
-
-If the primers are unknown, running something like the below should give a good indication of what they are (run from folder of decompressed fastq files). It will also give a good indication of how many mismatches (if any) to use for demulti.pl.
-```shell
-sed -n '2~4p' $(ls|head -n1)|grep -x "[ATCG]\+"|cut -c-16|sort|uniq| \
-tee zzexpressions.txt|xargs -I%  grep -c "^%" $(ls|head -n1) >zzcounts.txt
-```
-
-CCGGCCTACTGGTTTCTGAGCGCAGCACAAGTCGCGCCGGCCTACTGGTTTCTGAGCGCAGCACAAGTCGCGCCGGCCTACTGGTTTCTGAGCGCAGCACAAGTCGCG
-```
-ITS primer with illumina adapter F
-TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGGTGAATCATCGAATCTTTGAACGC
-ITS primer with illumina adapter R
-GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGCCGCTTATTGATATGCTTAARTTCAG
-```
-
-Run below to demultiplex
-
-Note - this step may be problematic for future runs as we have
-  * multiple F or R primers for some loci
-  * degenerate primer site for some primers
-As such, I may need to write a new demultiplexing script.
+Run below to demultiplex:
 
 ```bash
   for DataDir in $(ls -d raw_dna/paired/*/*/*/*); do
@@ -267,7 +196,6 @@ As such, I may need to write a new demultiplexing script.
     echo $(basename $R2)
     ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
     OutDir=demulti_dna/$(echo $R1 | rev | cut -f3,4,5,6 -d '/' | rev)
-    # echo $OutDir
     qsub $ProgDir/submit_demulti.sh $R1 $R2 ${OutDir}
   done
 ```
@@ -291,20 +219,8 @@ $PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c AMBIGpre \
 Script will join PE reads (with a maximum % difference in overlap) remove adapter contamination and filter on minimum size and quality threshold.
 Unfiltered joined reads are saved to unfiltered folder, filtered reads are saved to filtered folder.
 
-16Spre.sh forward_read reverse_read output_file_name output_directory adapters min_size min_join_overlap max_errrors
 
-```shell
-
-# PROJECT_FOLDER=/home/groups/harrisonlab/project_files/fusarium_ampseq
-# ProgDir=/home/armita/git_repos/emr_repos/scripts/Metabarcoding_pipeline/scripts
-# $ProgDir/PIPELINE.sh -c OOpre \
-#   "$PROJECT_FOLDER/data/$RUN/$SSU/fastq/*R1*.fastq" \
-#   $PROJECT_FOLDER/data/$RUN/$SSU \
-#   $PROJECT_FOLDER/metabarcoding_pipeline/primers/adapters.db \
-#   $MINL $MINOVER $QUAL $FPL $RPL
-
-# R1=$(ls demulti_dna/ITS/soil_pathogens/equimolar/1/ITS-1a-1_S1_L001_R1_001_ITS.fq)
-# R2=$(ls demulti_dna/ITS/soil_pathogens/equimolar/1/ITS-1a-1_S1_L001_R2_001_ITS.fq)
+```bash
 for DataDir in $(ls -d demulti_dna/*/*/*/* | grep 'ITS'); do
   Jobs=$(qstat | grep 'sub_process' | grep 'qw'| wc -l)
   while [ $Jobs -gt 1 ]; do
@@ -321,27 +237,10 @@ for DataDir in $(ls -d demulti_dna/*/*/*/* | grep 'ITS'); do
   echo $DataDir
   echo $(basename $R1)
   echo $(basename $R2)
-# R1=$(ls demulti_dna/TEF/Fusarium_spp/equimolar/1/TEF-2a-1_S65_L001_R1_001_TEF.fq)
-# R2=$(ls demulti_dna/TEF/Fusarium_spp/equimolar/1/TEF-2a-1_S65_L001_R2_001_TEF.fq)
   OutDir="processed_dna/"$(echo $R1 | rev | cut -f2,3,4,5 -d '/' | rev)
   ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
   qsub $ProgDir/sub_process_reads.sh $R1 $R2 $Locus $Prefix $OutDir
 done
-
-#
-# #S=$(echo $f|awk -F"_" -v D=$(echo $LOC|awk -F"/" '{print($(NF-3))}') '{print $2"D"D}')
-# S=$(echo $f|awk -F"/" '{print $NF'}|awk -F"_" {'print $1,$2'} OFS="_")
-#
-# OUTFILE=$1
-# OUTDIR=$1
-# ADAPTERS=$1
-# MINL=$1
-# MAXDIFF=$1
-# QUAL=$1
-# FPL=$1
-# RPL=$1
-# SCRIPT_DIR=$1
-# qsub $SCRIPT_DIR/submit_16Spre_v2.sh $R1 $R2 $OUTFILE $S $@ $SCRIPT_DIR
 ```
 
 
@@ -403,63 +302,17 @@ cd $WorkDir
 ```
 
 ```bash
-# $PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c tax_assign $PROJECT_FOLDER $RUN $SSU sintax
-# qsub $SCRIPT_DIR/submit_taxonomy.sh $SCRIPT_DIR $@
 OTUs=clustering/ITS/ITS_OTUs.fa
 RefDb=$(ls databases/ITS/utax_fungi_ITS_sintax.udp)
-# Prefix=$(echo $OTUs | cut -f2 -d '|')"_OTUs"
 Prefix=$(basename ${OTUs%.fa})
 OutDir=$(dirname $OTUs)
 ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
 qsub $ProgDir/submit_taxonomy.sh $OTUs $RefDb $Prefix $OutDir
-
 ```
 
 Create OTU tables
 
 ```bash
-  # Primers=primers.fa
-  # printf \
-  # ">ITS_F
-  # GTGAATCATCGAATCTTTGAACGC
-  # >ITS_R
-  # CCGCTTATTGATATGCTTAARTTCAG
-  # >TEF_F
-  # GGTCACTTGATCTACCAGTGCG
-  # >TEF_R
-  # CCCARGCGTACTTGAAGRAAC
-  # >SIX_F
-  # GCTACTCAAAGTCGTGGACGAG
-  # >SIX_R
-  # GGCAATATATTCCGTCCATTCTTGG
-  # >FOCg17143_F
-  # CACTTCCTCACTTACTTTACCACTCC
-  # >FOCg17143_F
-  # GTCATCGCAATCGCCKTCCG
-  # >orthogroup_13890_F
-  # GCTGTCTTATCACTTATCAGCCTTG
-  # >orthogroup_13890_R
-  # CGGTCTGATTTGGTGTCCAGTCG" \
-  # > $Primers
-  # ReadsF=$(ls demulti_dna/ITS/soil_pathogens/equimolar/1/*_R1_001_ITS.fq)
-  # ReadsR=$(echo $ReadsF | sed 's/_R1_/_R2_/g')
-  # Locus=$(echo $ReadsF | cut -f2 -d '/')
-  # OutDir=$(dirname $ReadsF)
-  #
-	# Prefix=$(echo $ReadsF | cut -f2,3,4,5 -d '/' | sed 's&/&_&g')
-  # Locus=$(echo $ReadsF | cut -f2 -d '/')
-  # FPL=$(cat $Primers | grep -A1 "${Locus}_F" | tail -n1 | wc -c)
-  # RPL=$(cat $Primers | grep -A1 "${Locus}_R" | tail -n1 | wc -c)
-  #
-  # OutF=$(basename ${ReadsF%.fq}_renamed.fa)
-  # OutR=$(basename ${ReadsF%.fq}_renamed.fa)
-  #
-  # #Variable Prefix and SL are given to awk to rename reads and trim them
-  # cat $ReadsF | awk -v S="$Prefix" -v SL="$SL" -F" " '{if(NR % 4 == 1){print ">" S "." count+1 ";"$1;count=count+1} if(NR % 4 == 2){$1=substr($1,(SL+1));print $1}}' > $OutDir/$OutF
-  # cat $ReadsR | awk -v S="$Prefix" -v SL="$SL" -F" " '{if(NR % 4 == 1){print ">" S "." count+1 ";"$1;count=count+1} if(NR % 4 == 2){$1=substr($1,(SL+1));print $1}}' > $OutDir/$OutR
-  # # The submit cat file script step of concatenating reads was not performed.
-  # # Presumably the step merges filtered and ambiguous reads.
-
 Locus=ITS
 Pool=soil_pathogens
 OutDir=quantified/$Locus/$Pool
@@ -467,12 +320,9 @@ mkdir -p $OutDir
 cat processed_dna/$Locus/$Pool/*/*/merged/*.fa | cut -f1 -d '.' > $OutDir/${Locus}_reads_appended.fa
 
 QueryReads=$(ls $OutDir/${Locus}_reads_appended.fa)
-# Locus=$(echo $QueryReads | cut -f2 -d '/')
 OtuType=OTUs
 RefDb=$(ls clustering/$Locus/${Locus}_${OtuType}_taxa.fa)
 Prefix=$Locus
-# Prefix=$(echo $QueryReads | cut -f2,3,4,5 -d '/' | sed 's&/&_&g')
-# OutDir=quantified/$Locus
 ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
 qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
 ```
