@@ -57,8 +57,9 @@ $ProgDir/usearch -cluster_otus ${Prefix}_dereplicated.fasta -otus ${Prefix}_OTUs
 # expected that one species may have more than one ZOTU, and with 97% OTUs it is
 # expected than an OTU may have more than one species.
 ProgDir=/home/deakig/usr/local/bin
-$ProgDir/usearch -unoise3 ${Prefix}_dereplicated.fasta -zotus ${Prefix}_zOTUs.fa #-relabel OTU #-minampsize 8
-
+$ProgDir/usearch -unoise3 ${Prefix}_dereplicated.fasta -zotus ${Prefix}_zOTUs_unparsed.fa #-relabel OTU #-minampsize 8
+# usearch may need "zOUTs be names as OTUs in later steps."
+cat ${Prefix}_zOTUs_unparsed.fa | sed -e 's/Zotu/OTU/' > $CurDir/$OutDir/${Prefix}_zOTUs.fa
 
 #usearch -unoise ${Prefix}.sorted.fasta -tabbedout ${Prefix}.txt -fastaout ${Prefix}.otus.fa -relabel OTU #-minampsize 8
 
@@ -67,6 +68,4 @@ $ProgDir/usearch -unoise3 ${Prefix}_dereplicated.fasta -zotus ${Prefix}_zOTUs.fa
 #rm ${Prefix}.sorted.fasta
 mv ${Prefix}_dereplicated.fasta $CurDir/$OutDir/.
 mv ${Prefix}_OTUs.fa $CurDir/$OutDir/.
-mv ${Prefix}_zOTUs.fa $CurDir/$OutDir/.
-# usearch may need "zOUTs be names as OTUs in later steps."
-cat ${Prefix}_zOTUs.fa | sed -e 's/Zotu/OTU/' > $CurDir/$OutDir/${Prefix}_zOTUs_parsed.fa
+mv ${Prefix}_zOTUs_unparsed.fa $CurDir/$OutDir/.
