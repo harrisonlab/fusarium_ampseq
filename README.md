@@ -169,7 +169,7 @@ Greg has also built an oomycota database combining three sets of data; 1) a subs
 
 NOTE: It is now possible to download just the stramenopiles subset from silva
 
-# Common workflow
+# Analysis of individual loci
 
 ## Demultiplexing
 
@@ -199,6 +199,44 @@ Run below to demultiplex:
     qsub $ProgDir/submit_demulti.sh $R1 $R2 ${OutDir}
   done
 ```
+ Summise reads demultiplexed:
+```bash
+printf "RunName\tLocus\tPool\tDilution\tRep\tITS\tTef\tSIX13\tT2\tT4\tAmbiguous\n" > demulti_dna/demultiplex_summary.tsv
+for RunDir in $(ls -d demulti_dna/*/*/*/*); do
+  Locus=$(echo $RunDir | rev | cut -f4 -d '/' | rev)
+  Pool=$(echo $RunDir | rev | cut -f3 -d '/' | rev)
+  Dilution=$(echo $RunDir | rev | cut -f2 -d '/' | rev)
+  Rep=$(echo $RunDir | rev | cut -f1 -d '/' | rev)
+  RunName=$(basename $RunDir/*_ambiguous.fq | sed 's/_ambiguous.fq//g')
+  ITS=$(ls $RunDir/*ITS.fq)
+  ItsLines=$(cat $ITS | wc -l)
+  TEF=$(ls $RunDir/*TEF.fq)
+  TefLines=$(cat $TEF | wc -l)
+  Six13=$(ls $RunDir/*SIX13.fq)
+  Six13Lines=$(cat $Six13 | wc -l)
+  T2=$(ls $RunDir/*OG12981.fq)
+  T2Lines=$(cat $T2 | wc -l)
+  T4=$(ls $RunDir/*OG13890.fq)
+  T4Lines=$(cat $T4 | wc -l)
+  Ambiguous=$(ls $RunDir/*ambiguous.fq)
+  AmbLines=$(cat $Ambiguous | wc -l)
+  printf "$RunName\t$Locus\t$Pool\t$Dilution\t$Rep\t$ItsLines\t$TefLines\t$Six13Lines\t$T2Lines\t$T4Lines\t$AmbLines\n"
+done >> demulti_dna/demultiplex_summary.tsv
+```
+
+From this data thresholding values of cross-contamination as a result of illumina
+adapter read hopping were determined. For each row in the dataset, the most
+abundant locus was assumed to be the target locus and reads attributed to other
+loci assumed to be contaminant reads. Reads from another experiment with the same
+locus could be contaminating the sample. The 2nd most abundant locus was
+identified for each run (the highest contaminant locus) and the maximum value
+identified accross the entire plate. A threshold for a minimum abundance of reads
+attributed to an OTU was set at this value.
+
+In the case of our plate, this was:
+```bash
+Threshold=206
+```
 
 <!-- ### Ambiguous data
 Ambiguous data should not be used for OTU clustering/denoising, but it can be counted in the OTU tables.
@@ -210,9 +248,8 @@ $PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c AMBIGpre \
  $PROJECT_FOLDER/metabarcoding_pipeline/primers/primers.db \
  $PROJECT_FOLDER/metabarcoding_pipeline/primers/adapters.db \
  300 5
-``` -->
-
-# Oomycete ITS workflow
+```
+-->
 
 
 ## Pre-processing
@@ -221,13 +258,13 @@ Unfiltered joined reads are saved to unfiltered folder, filtered reads are saved
 
 
 ```bash
-for DataDir in $(ls -d demulti_dna/*/*/*/* | grep 'ITS'); do
-  Jobs=$(qstat | grep 'sub_process' | grep 'qw'| wc -l)
-  while [ $Jobs -gt 1 ]; do
-  sleep 1m
-  printf "."
-  Jobs=$(qstat | grep 'sub_process' | grep 'qw'| wc -l)
-  done
+for DataDir in $(ls -d demulti_dna/*/*/*/* | grep -v 'all_loci'); do
+  # Jobs=$(qstat | grep 'sub_pro' | grep 'qw'| wc -l)
+  # while [ $Jobs -gt 1 ]; do
+  # sleep 1m
+  # printf "."
+  # Jobs=$(qstat | grep 'sub_pro' | grep 'qw'| wc -l)
+  # done
   printf "\n"
   Locus=$(echo $DataDir | cut -f2 -d '/')
   Prefix=$(echo $DataDir | cut -f2,3,4,5 -d '/' | sed 's&/&_&g')
@@ -253,7 +290,8 @@ This is mostly a UPARSE pipeline, but usearch (free version) runs out of memory 
 
 ```bash
   # Concatenate files
-  for Locus in "ITS"; do
+  # for Locus in "ITS" "TEF"; do
+  for Locus in SIX13 OG12981 OG13890; do
     OutDir=clustering/$Locus
     mkdir -p $OutDir
     cat processed_dna/$Locus/*/*/*/filtered/*.filtered.fa > $OutDir/${Locus}_concatenated.temp.fa
@@ -301,28 +339,411 @@ $ProgDir/usearch -makeudb_sintax utax_fungi_ITS.fasta -output utax_fungi_ITS_sin
 cd $WorkDir
 ```
 
+TEF
+
+TEF sequences Provided by AndyT and suplimented with additional
+sequences from genbank were aligned and the amplicon extracted.
+Non-redundant sequences were kept and samples relabeled to reflect
+their original species. Taxa were then exported from geneious and
+the followin command was used to add taxonomic information to the
+fasta file.
+
 ```bash
-OTUs=clustering/ITS/ITS_OTUs.fa
-RefDb=$(ls databases/ITS/utax_fungi_ITS_sintax.udp)
-Prefix=$(basename ${OTUs%.fa})
-OutDir=$(dirname $OTUs)
-ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-qsub $ProgDir/submit_taxonomy.sh $OTUs $RefDb $Prefix $OutDir
+  String=';tax=d:Fungi,p:Ascomycota,c:Sordariomycetes,o:Hypocreales,f:Nectriaceae,g:Fusarium,s:'
+  cat TEF_amplicon_nr.fasta | sed "s/>.*/&$String&/" | tr -d '>' | sed "s/^F/>F/g" > TEF_amplicon_nr_db.fasta
+```
+The database was then copied bak up to the cluster:
+(running from local computer)
+```bash
+scp TEF_amplicon_nr_db.fasta cluster:/data/scratch/armita/fusarium_ampseq/databases/TEF/.
+```
+
+```bash
+cd /data/scratch/armita/fusarium_ampseq/databases/TEF
+ProgDir=/home/deakig/usr/local/bin
+$ProgDir/usearch -makeudb_sintax TEF_amplicon_nr_db.fasta -output TEF_amplicon_nr_db.udp
+cd /data/scratch/armita/fusarium_ampseq
+```
+
+SIX13
+
+The database for SIX13 was made using the same approach
+as TEF. Sequences originated from reference genomes.
+The database was then copied bak up to the cluster:
+(running from local computer)
+
+The database was copied to the cluster:
+(running from local computer)
+```bash
+scp SIX13_amplicon_nr_db.fasta cluster:/data/scratch/armita/fusarium_ampseq/databases/SIX13/.
+```
+
+```bash
+cd /data/scratch/armita/fusarium_ampseq/databases/SIX13
+ProgDir=/home/deakig/usr/local/bin
+$ProgDir/usearch -makeudb_sintax SIX13_amplicon_nr_db.fasta -output SIX13_amplicon_nr_db.udp
+cd /data/scratch/armita/fusarium_ampseq
+```
+
+
+T2
+
+The database for T2 was made using the same approach
+as TEF. Sequences originated from reference genomes.
+The database was then copied bak up to the cluster:
+(running from local computer)
+
+The database was copied to the cluster:
+(running from local computer)
+```bash
+scp T2_amplicon_nr_db.fasta cluster:/data/scratch/armita/fusarium_ampseq/databases/OG12981/OG12981_amplicon_nr_db.fasta
+```
+
+```bash
+cd /data/scratch/armita/fusarium_ampseq/databases/OG12981
+ProgDir=/home/deakig/usr/local/bin
+$ProgDir/usearch -makeudb_sintax OG12981_amplicon_nr_db.fasta -output OG12981_amplicon_nr_db.udp
+cd /data/scratch/armita/fusarium_ampseq
+```
+
+T4
+
+The database for T4 was made using the same approach
+as TEF. Sequences originated from reference genomes.
+The database was then copied bak up to the cluster:
+(running from local computer)
+
+The database was copied to the cluster:
+(running from local computer)
+```bash
+scp T4_amplicon_nr_db.fasta cluster:/data/scratch/armita/fusarium_ampseq/databases/OG13890/OG13890_amplicon_nr_db.fasta
+```
+
+```bash
+cd /data/scratch/armita/fusarium_ampseq/databases/OG13890
+ProgDir=/home/deakig/usr/local/bin
+$ProgDir/usearch -makeudb_sintax OG13890_amplicon_nr_db.fasta -output OG13890_amplicon_nr_db.udp
+cd /data/scratch/armita/fusarium_ampseq
+```
+
+```bash
+for Locus in OG12981; do
+# for Locus in ITS TEF SIX13 OG12981 OG13890; do
+  for Type in OTUs zOTUs; do
+  OtuFa=$(ls clustering/$Locus/${Locus}_${Type}.fa)
+  RefDb=$(ls databases/$Locus/*.udp)
+  Prefix=$(basename ${OtuFa%.fa})
+  OutDir=$(dirname $OtuFa)
+  ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+  qsub $ProgDir/submit_taxonomy.sh $OtuFa $RefDb $Prefix $OutDir
+  done
+done
 ```
 
 Create OTU tables
 
 ```bash
-Locus=ITS
-Pool=soil_pathogens
-OutDir=quantified/$Locus/$Pool
-mkdir -p $OutDir
-cat processed_dna/$Locus/$Pool/*/*/merged/*.fa | cut -f1 -d '.' > $OutDir/${Locus}_reads_appended.fa
-
-QueryReads=$(ls $OutDir/${Locus}_reads_appended.fa)
-OtuType=OTUs
-RefDb=$(ls clustering/$Locus/${Locus}_${OtuType}_taxa.fa)
-Prefix=$Locus
-ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
+# for Locus in ITS TEF SIX13 OG12981 OG13890; do
+for Locus in OG12981; do
+  for Pool in soil_pathogens Fusarium_spp; do
+  # for Pool in Fusarium_spp; do
+    OutDir=quantified/$Locus/$Pool
+    mkdir -p $OutDir
+    cat processed_dna/$Locus/$Pool/*/*/merged/*.fa | cut -f1 -d '.' > $OutDir/${Locus}_reads_appended.fa
+    QueryReads=$(ls $OutDir/${Locus}_reads_appended.fa)
+    # for OtuType in OTUs zOTUs; do
+    for OtuType in zOTUs; do
+      RefDb=$(ls clustering/$Locus/${Locus}_${OtuType}_taxa.fa)
+      Prefix=$Locus
+      ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+      qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
+    done
+  done
+done
 ```
+
+```bash
+# for Locus in ITS TEF SIX13 OG12981 OG13890; do
+for Locus in OG12981; do
+  for Pool in soil_pathogens Fusarium_spp; do
+  # for Pool in soil_pathogens; do
+    for OutDir in $(ls -d quantified/$Locus/$Pool); do
+      # for OtuType in OTUs zOTUs; do
+      for OtuType in zOTUs; do
+        Prefix=$Locus
+        # Plot by species
+        ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+        $ProgDir/plot_OTUs.r --OTU_table $OutDir/${Prefix}_${OtuType}_table_by_spp.txt --prefix $OutDir/${Prefix}_${OtuType}_table_by_spp
+        $ProgDir/plot_OTUs.r --OTU_table $OutDir/${Prefix}_${OtuType}_table_by_spp_thresholded.txt --prefix $OutDir/${Prefix}_${OtuType}_table_by_spp_thresholded
+        $ProgDir/plot_OTUs.r --OTU_table $OutDir/${Prefix}_${OtuType}_table_by_spp_thresholded_norm.txt --prefix $OutDir/${Prefix}_${OtuType}_table_by_spp_thresholded_norm
+      done
+    done
+  done
+done
+```
+
+```bash
+rm quantified/*/*/*_reads_appended.fa
+rm quantified/*/*/*_hits.out
+```
+
+
+
+The output directories were then downloaded to my local computer, where plots
+were generated using Rstudio.
+
+on Local machine:
+```bash
+cd /Users/armita/Downloads/AHDB/ampseq
+scp -r cluster:/data/scratch/armita/fusarium_ampseq/quantified/ITS/soil_pathogens .
+```
+
+R commands are documented in:
+fusarium_ampseq/scripts/plot_OTUs.r
+
+This was run for normalised and unormalised data and using OTU and zOTU data.
+
+
+
+# Analysis of pooled loci
+
+## Demultiplexing
+
+This script demultiplexs mixed (e.g. ITS and 16S) libraries based on the primer sequence. Any sequence which has mismatches is written to ambiguous.fq (f & r seperately). Primer sequences
+are detailed in the submission wrapper.
+*Note* Regex are used to describe degenerate bases in the primer.
+
+Run below to demultiplex:
+
+```bash
+  for DataDir in $(ls -d raw_dna/paired/*/*/*/* | grep 'all_loci'); do
+    Jobs=$(qstat | grep 'submit_dem' | grep 'qw'| wc -l)
+    while [ $Jobs -gt 1 ]; do
+    sleep 1m
+    printf "."
+    Jobs=$(qstat | grep 'submit_dem' | grep 'qw'| wc -l)
+    done
+    printf "\n"
+    WorkDir=/data/scratch/armita/fusarium_ampseq
+    R1=$(ls $DataDir/F/*.fastq.gz)
+    R2=$(ls $DataDir/R/*.fastq.gz)
+    echo $DataDir
+    echo $(basename $R1)
+    echo $(basename $R2)
+    ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+    OutDir=demulti_dna/$(echo $R1 | rev | cut -f3,4,5,6 -d '/' | rev)
+    qsub $ProgDir/submit_demulti.sh $R1 $R2 ${OutDir}
+  done
+```
+ Summise reads demultiplexed:
+```bash
+printf "RunName\tLocus\tPool\tDilution\tRep\tITS\tTef\tSIX13\tT2\tT4\tAmbiguous\n" > demulti_dna/demultiplex_summary.tsv
+for RunDir in $(ls -d demulti_dna/*/*/*/* | grep 'all_loci'); do
+  Locus=$(echo $RunDir | rev | cut -f4 -d '/' | rev)
+  Pool=$(echo $RunDir | rev | cut -f3 -d '/' | rev)
+  Dilution=$(echo $RunDir | rev | cut -f2 -d '/' | rev)
+  Rep=$(echo $RunDir | rev | cut -f1 -d '/' | rev)
+  RunName=$(basename $RunDir/*_ambiguous.fq | sed 's/_ambiguous.fq//g')
+  ITS=$(ls $RunDir/*ITS.fq)
+  ItsLines=$(cat $ITS | wc -l)
+  TEF=$(ls $RunDir/*TEF.fq)
+  TefLines=$(cat $TEF | wc -l)
+  Six13=$(ls $RunDir/*SIX13.fq)
+  Six13Lines=$(cat $Six13 | wc -l)
+  T2=$(ls $RunDir/*OG12981.fq)
+  T2Lines=$(cat $T2 | wc -l)
+  T4=$(ls $RunDir/*OG13890.fq)
+  T4Lines=$(cat $T4 | wc -l)
+  Ambiguous=$(ls $RunDir/*ambiguous.fq)
+  AmbLines=$(cat $Ambiguous | wc -l)
+  printf "$RunName\t$Locus\t$Pool\t$Dilution\t$Rep\t$ItsLines\t$TefLines\t$Six13Lines\t$T2Lines\t$T4Lines\t$AmbLines\n"
+done
+```
+
+<!-- ### Ambiguous data
+Ambiguous data should not be used for OTU clustering/denoising, but it can be counted in the OTU tables.
+Would require converting to FASTA with approprite labels  - the below should do this will join PE and remove adapters/primers
+```shell
+$PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c AMBIGpre \
+ "$PROJECT_FOLDER/data/$RUN/ambiguous/*R1*.fastq" \
+ $PROJECT_FOLDER/data/$RUN/ambiguous \
+ $PROJECT_FOLDER/metabarcoding_pipeline/primers/primers.db \
+ $PROJECT_FOLDER/metabarcoding_pipeline/primers/adapters.db \
+ 300 5
+```
+-->
+
+
+## Pre-processing
+Script will join PE reads (with a maximum % difference in overlap) remove adapter contamination and filter on minimum size and quality threshold.
+Unfiltered joined reads are saved to unfiltered folder, filtered reads are saved to filtered folder.
+
+
+```bash
+for DataDir in $(ls -d demulti_dna/*/*/*/* | grep 'all_loci'); do
+  for R1 in $(ls $DataDir/*_R1_*.fq | grep -v 'ambiguous'); do
+    R2=$(echo $R1 | sed 's/_R1_/_R2_/g')
+    Locus=$(echo ${R1%.fq} | rev | cut -f1 -d '_' | rev)
+    Prefix=$(echo $DataDir | cut -f2,3,4,5 -d '/' | sed 's&/&_&g')_${Locus}
+    # Jobs=$(qstat | grep 'sub_pro' | grep 'qw'| wc -l)
+    # while [ $Jobs -gt 1 ]; do
+    # sleep 1m
+    # printf "."
+    # Jobs=$(qstat | grep 'sub_pro' | grep 'qw'| wc -l)
+    # done
+    # printf "\n"
+    WorkDir=/data/scratch/armita/fusarium_ampseq
+    echo $DataDir
+    echo $(basename $R1)
+    echo $(basename $R2)
+    OutDir="processed_dna/"$(echo $R1 | rev | cut -f2,3,4,5 -d '/' | rev)"/${Locus}"
+    ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+    qsub $ProgDir/sub_process_reads.sh $R1 $R2 $Locus $Prefix $OutDir
+  done
+done
+```
+
+
+## OTU assignment
+This is mostly a UPARSE pipeline, but usearch (free version) runs out of memory for dereplication and subsequent steps. Greg has written his own scripts to do the dereplication and sorting
+
+ * All read files associated with the each locus in the project are concatenated
+ * Clustering run on all the data for this locus within the project
+ * Quantification can then be performed for each treatment against the total set
+
+ * This may not be the best approach as zOTUs are identified by separating out real and error reads. Therefore this will be sensitive to taxa abundance within the dataset. For example, we would not want a taxon that appears in only one dataset to be identified as error-reads by abundance of a similar taxon in all other datasets.
+
+```bash
+  # Concatenate files
+  for Locus in ITS TEF SIX13 OG12981 OG13890; do
+    OutDir=clustering/all_loci/$Locus
+    mkdir -p $OutDir
+    cat processed_dna/all_loci/*/*/*/$Locus/filtered/*.filtered.fa > $OutDir/${Locus}_concatenated.temp.fa
+    ls -lh $OutDir/${Locus}_concatenated.temp.fa
+    # Submit clustering
+    ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+    qsub $ProgDir/submit_clustering.sh $OutDir/${Locus}_concatenated.temp.fa $OutDir $Locus
+  done
+```
+
+### Assign taxonomy
+
+https://www.drive5.com/usearch/manual/utax_or_sintax.html
+Taxonomy can be assigned using SINTAX or UTAX methods:
+
+```
+UTAX and SINTAX have different strengths and weaknesses
+SINTAX is brand new so I don't have much experience with it yet (this was written just after version 9 was released). On short 16S tags like V4, SINTAX and RDP have very similar performance. On longer 16S sequences and on ITS sequences, SINTAX is better than RDP. SINTAX is simpler because it doesn't need training, while training UTAX or RDP is quite challenging if you want to use your own database. UTAX is the only algorithm which tries to account for sparse reference data and has the lowest over-classification rate of any algorithm (except possibly the k-nearest-neighbor method in mothur, but knn has low sensitivity in general). However, UTAX sometimes has lower sensitivity than SINTAX to known taxa. Neither algorithm is a clear winner over the other.
+```
+
+* Greg uses Sintax as it is A) recomended by the author B) easier to make custom databases with
+* An alternative to database-based taxonomy assignment is to used BLAST. It may be worth investigating automated BLAST lookups vs NCBI.
+
+usearch hosts databases for some loci. Silva also has a database for the stremenophiles (oomycetes) that can be downloaded. Otherwise, personal databases must be made.
+https://unite.ut.ee/repository.php
+https://www.arb-silva.de/browser/
+
+
+Build databases for loci:
+* See commands above
+
+
+```bash
+for Locus in ITS TEF SIX13 OG12981 OG13890; do
+  for Type in OTUs zOTUs; do
+  OtuFa=$(ls clustering/all_loci/$Locus/${Locus}_${Type}.fa)
+  RefDb=$(ls databases/$Locus/*.udp)
+  Prefix=$(basename ${OtuFa%.fa})
+  OutDir=$(dirname $OtuFa)
+  ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+  qsub $ProgDir/submit_taxonomy.sh $OtuFa $RefDb $Prefix $OutDir
+  done
+done
+```
+
+Create OTU tables
+
+```bash
+for Locus in ITS TEF SIX13 OG12981 OG13890; do
+  for Pool in mixed_pool Fusarium_spp; do
+    OutDir=quantified/all_loci/$Pool/$Locus
+    mkdir -p $OutDir
+    cat processed_dna/all_loci/$Pool/*/*/$Locus/merged/*.fa | cut -f1 -d '.' > $OutDir/${Locus}_reads_appended.fa
+    QueryReads=$(ls $OutDir/${Locus}_reads_appended.fa)
+    for OtuType in OTUs zOTUs; do
+      RefDb=$(ls clustering/$Locus/${Locus}_${OtuType}_taxa.fa)
+      Prefix=$Locus
+      ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+      qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
+    done
+  done
+done
+```
+
+
+```bash
+for Locus in ITS TEF SIX13 OG12981 OG13890; do
+# for Locus in OG12981; do
+  for Pool in mixed_pool Fusarium_spp; do
+  # for Pool in soil_pathogens; do
+    for OutDir in $(ls -d quantified/all_loci/$Pool/$Locus); do
+      # for OtuType in OTUs zOTUs; do
+      for OtuType in zOTUs; do
+        Prefix=$Locus
+        # Plot by species
+        ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+        $ProgDir/plot_OTUs.r --OTU_table $OutDir/${Prefix}_${OtuType}_table_by_spp.txt --prefix $OutDir/${Prefix}_${OtuType}_table_by_spp
+        $ProgDir/plot_OTUs.r --OTU_table $OutDir/${Prefix}_${OtuType}_table_by_spp_thresholded.txt --prefix $OutDir/${Prefix}_${OtuType}_table_by_spp_thresholded
+        $ProgDir/plot_OTUs.r --OTU_table $OutDir/${Prefix}_${OtuType}_table_by_spp_thresholded_norm.txt --prefix $OutDir/${Prefix}_${OtuType}_table_by_spp_thresholded_norm
+      done
+    done
+  done
+done
+```
+
+
+
+```bash
+rm quantified/*/*/*/*_reads_appended.fa
+rm quantified/*/*/*/*_hits.out
+```
+
+```bash
+for File in $(ls all_loci/*/*/*_table.txt); do
+# for File in $(ls all_loci/mixed_pool/*/*_table.txt); do
+Locus="all_loci"
+Pool=$(echo $File | cut -f3 -d '/')
+OtuType=$(basename $File | cut -f2 -d '_')
+Primers=$(echo $File | cut -f4 -d '/')
+Prefix=${Locus}_${Pool}_${OtuType}_${Primers}
+OutDir=$(dirname $File)
+# ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+./plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 206
+done
+for File in $(ls all_loci/*/*/*_table_norm.txt); do
+# for File in $(ls all_loci/mixed_pool/*/*_table.txt); do
+Locus="all_loci"
+Pool=$(echo $File | cut -f3 -d '/')
+OtuType=$(basename $File | cut -f2 -d '_')
+Primers=$(echo $File | cut -f4 -d '/')
+Prefix="${Locus}_${Pool}_${OtuType}_${Primers}_norm"
+OutDir=$(dirname $File)
+# ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
+./plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix
+done
+```
+
+The output directories were then downloaded to my local computer, where plots
+were generated using Rstudio.
+
+on Local machine:
+```bash
+cd /Users/armita/Downloads/AHDB/ampseq
+scp -r cluster:/data/scratch/armita/fusarium_ampseq/quantified/ITS/Fusarium_spp/*.txt .
+scp -r cluster:/data/scratch/armita/fusarium_ampseq/quantified/ITS/mixed_pool/*.txt .
+```
+
+R commands are documented in:
+fusarium_ampseq/scripts/plot_OTUs.r
+
+This was run for normalised and unormalised data and using OTU and zOTU data.
