@@ -2,6 +2,7 @@
 #$ -S /bin/bash
 #$ -cwd
 #$ -l virtual_free=4G
+#$ -l h=blacklace05.blacklace|blacklace06.blacklace|blacklace07.blacklace|blacklace08.blacklace|blacklace09.blacklace|blacklace10.blacklace|blacklace12.blacklace
 
 OTUs=$1
 RefDB=$2

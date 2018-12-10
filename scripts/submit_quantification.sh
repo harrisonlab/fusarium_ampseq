@@ -3,6 +3,7 @@
 #$ -S /bin/bash
 #$ -cwd
 #$ -l virtual_free=4G
+#$ -l h=blacklace05.blacklace|blacklace06.blacklace|blacklace07.blacklace|blacklace08.blacklace|blacklace09.blacklace|blacklace10.blacklace|blacklace12.blacklace
 
 
 QueryReads=$1
@@ -26,7 +27,7 @@ $ProgDir/usearch -otutab_norm ${Prefix}_${OtuType}_table.txt -sample_size 10000 
 # Combine reads by species and filter taxa with reads fewer than a given threshold
 ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
 $ProgDir/filter_OTU_tables.py --table ${Prefix}_${OtuType}_table.txt --threshold 0 > ${Prefix}_${OtuType}_table_by_spp.txt
-$ProgDir/filter_OTU_tables.py --table ${Prefix}_${OtuType}_table.txt --threshold 206 > ${Prefix}_${OtuType}_table_by_spp_thresholded.txt
+$ProgDir/filter_OTU_tables.py --table ${Prefix}_${OtuType}_table.txt --threshold $Threshold > ${Prefix}_${OtuType}_table_by_spp_thresholded.txt
 # Normalise these filtered samples
 cat ${Prefix}_${OtuType}_table_by_spp_thresholded.txt | sed "s/^Species/#OTU ID/g" > tmp.txt
 ProgDir=/home/deakig/usr/local/bin
