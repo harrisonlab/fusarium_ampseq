@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/local/bin/Rscript
 
 library(ggplot2)
 library(readr)
@@ -9,14 +9,16 @@ library(readr)
 library(optparse)
 opt_list = list(
     make_option("--OTU_table", type="character", help="OTUs table"),
-    make_option("--prefix", type="character", help="Output prefix")
+    make_option("--prefix", type="character", help="Output prefix"),
+    make_option("--threshold", type="integer", help="Threshold for presence/absence set as numeric or 'none'")
 )
 opt = parse_args(OptionParser(option_list=opt_list))
 f = opt$OTU_table
 prefix = opt$prefix
+threshold = opt$threshold
 
 df1 <- read_delim(f, "\t", escape_double = FALSE, trim_ws = TRUE)
-
+# summary(df1)
 # ITS
 # OTUs
 # raw data
@@ -164,13 +166,13 @@ df3$group <- gsub("_.$","",rownames(df3))
 
 #install.packages('ggfortify')
 library(ggfortify)
-pca_plot <- autoplot(prcomp(df2), data = df3, colour = 'group')
-#pca_plot <- pca_plot + theme(legend.title = element_blank())
-pca_plot <- pca_plot + theme(legend.position="bottom", legend.title = element_blank())
-pca_plot <- pca_plot + theme(legend.text = element_text(colour="black", size=7.5))
-pca_plot <- pca_plot + theme(plot.margin=unit(c(1,2.5,0.5,0.5),"cm"))
-filename <- paste(prefix, 'pca.pdf', sep='_')
-ggsave(filename, plot = pca_plot, width =20, height = 15, units = "cm", limitsize = FALSE)
+# pca_plot <- autoplot(prcomp(df2), data = df3, colour = 'group')
+# #pca_plot <- pca_plot + theme(legend.title = element_blank())
+# pca_plot <- pca_plot + theme(legend.position="bottom", legend.title = element_blank())
+# pca_plot <- pca_plot + theme(legend.text = element_text(colour="black", size=7.5))
+# pca_plot <- pca_plot + theme(plot.margin=unit(c(1,2.5,0.5,0.5),"cm"))
+# filename <- paste(prefix, 'pca.pdf', sep='_')
+# ggsave(filename, plot = pca_plot, width =20, height = 15, units = "cm", limitsize = FALSE)
 
 #---
 # Function to summarise data to show SE and means by experimental treatment
@@ -228,7 +230,10 @@ library(reshape2)
 df4 <- melt(df1, id.vars=c('#OTU ID',"OTUs", 'Genus', 'Species'),value.name = "Counts", variable.name='Run')
 df4$'#OTU ID' <- NULL
 df4$group <- gsub("_.$","",df4$Run)
-df4$experiment <- gsub("_.$|_pooled_reps|_pool","",df4$Run)
+df4$experiment <- gsub("_.$|_rep.$|_rep._.*$|_pooled_reps|_pool","",df4$Run)
+df4$experiment <- gsub("^.*dilution","dilution",df4$experiment)
+df4$experiment <- gsub("^.*equimolar","equimolar",df4$experiment)
+df4$experiment <- gsub("equimolar.*$","equimolar",df4$experiment)
 df4$reps <- ifelse(grepl("pool",df4$Run), "pooled","tech. reps.")
 df4$reps <- as.factor(df4$reps)
 df4$reps <- factor(df4$reps,levels(df4$reps)[c(2,1)])
@@ -256,7 +261,11 @@ ggsave(filename, plot = facet_OTUs, width =25, height = 25, units = "cm", limits
 
 df6 <- aggregate(df4$Counts, by=list(df4$Run, df4$Species), FUN=sum)
 colnames(df6) <- c('Run', 'Species', 'Counts')
-df6$experiment <- gsub("_.$|_pooled_reps|_pool","",df6$Run)
+df6$experiment <- gsub("_.$|_rep.$|_rep._.*$|_pooled_reps|_pool","",df6$Run)
+df6$experiment <- gsub("^.*dilution","dilution",df6$experiment)
+df6$experiment <- gsub("^.*equimolar","equimolar",df6$experiment)
+df6$experiment <- gsub("equimolar.*$","equimolar",df6$experiment)
+# print(df6$experiment)
 df6$reps <- ifelse(grepl("pool",df6$Run), "pooled","tech. reps.")
 df6$reps <- as.factor(df6$reps)
 df6$reps <- factor(df6$reps,levels(df6$reps)[c(2,1)])
@@ -273,6 +282,76 @@ facet_species <- facet_species + geom_errorbar(aes(ymin=Counts-se, ymax=Counts+s
                   position=position_dodge(.9))
 facet_species <- facet_species + theme(plot.margin=unit(c(1,3,0.5,0.5),"cm"))
 facet_species <- facet_species + facet_grid(experiment ~ reps)
-facet_species
+
 filename <- paste(prefix, 'facet_species.pdf', sep='_')
+ggsave(filename, plot = facet_species, width =25, height = 25, units = "cm", limitsize = FALSE)
+
+
+#---
+#
+#---
+# Write a table summarising mean reads by treatment
+
+summary_df <- aggregate(df6$Counts, by=list(df6$Species, df6$experiment, df6$reps), FUN=mean)
+colnames(summary_df) <- c('Species', 'experiment', 'reps', 'Counts')
+summary_df$Counts <- round(summary_df$Counts)
+# print(summary_df)
+filename <- paste(prefix, 'summarised_counts.tsv', sep='_')
+write.table(summary_df,file=filename,sep="\t", row.names=FALSE)
+
+#---
+# Create plots combining data of OTUs with duplicate taxa designations after thresholding
+#---
+
+df8 <- aggregate(df4$Counts, by=list(df4$Run, df4$Species), FUN=sum)
+colnames(df8) <- c('Run', 'Species', 'Counts')
+# summary(df8)
+# print(df8$Run)
+df8$experiment <- gsub("_.$|_rep.$|_rep._.*$|_pooled_reps|_pool","",df8$Run)
+df8$experiment <- gsub("^.*dilution","dilution",df8$experiment)
+df8$experiment <- gsub("^.*equimolar","equimolar",df8$experiment)
+df8$experiment <- gsub("equimolar.*$","equimolar",df8$experiment)
+# print(df8$experiment)
+# Reduce numbers to Reads exceeding threshold:
+# summary(df8$Counts)
+# print(df8$Counts)
+df8$Counts <- df8$Counts - threshold
+df8$Counts[df8$Counts < 0] <- 0
+# print(df8$Counts)
+# summary(df8$Counts)
+# aggregate(df8$Counts, by=list(Category=df8$Species), FUN=sum)
+df10 <- aggregate(df8$Counts, by=list(Category=df8$Species), FUN=sum)
+# summary(df10)
+# print(df10)
+remove_taxa <- df10$Category[df10$x < 1]
+if (length(remove_taxa) > 0) {
+  print(remove_taxa)
+  df11 <- df8[- grep(paste(remove_taxa, collapse="|"), df8$Species),]
+  aggregate(df11$Counts, by=list(Category=df11$Species), FUN=sum)
+} else {
+  df11 <- df8
+}
+
+# print(df10)
+# df8$Counts[
+# df8$Counts
+# print(df8$experiment)
+df11$reps <- ifelse(grepl("pool",df11$Run), "pooled","tech. reps.")
+df11$reps <- as.factor(df11$reps)
+df11$reps <- factor(df11$reps,levels(df11$reps)[c(2,1)])
+# Generate SE for experimental reps
+df9 <- summarySE(df11, measurevar="Counts", groupvars=c('Species', 'experiment', 'reps'))
+df9$OTU_label <- paste(df9$Species, df9$OTUs, sep = ' ')
+# Create plot
+facet_species<-ggplot(data=subset(df9), aes(x=OTU_label, y=Counts))
+facet_species <- facet_species + geom_bar(stat="identity")
+facet_species <- facet_species + theme(axis.text.x=element_text(angle = -45, hjust = 0))
+facet_species <- facet_species + ylab('Mapped reads over threshold') + xlab('')
+facet_species <- facet_species + geom_errorbar(aes(ymin=Counts-se, ymax=Counts+se),
+                  width=.2,                    # Width of the error bars
+                  position=position_dodge(.9))
+facet_species <- facet_species + theme(plot.margin=unit(c(1,3,0.5,0.5),"cm"))
+facet_species <- facet_species + facet_grid(experiment ~ reps)
+
+filename <- paste(prefix, 'facet_species_thresholded.pdf', sep='_')
 ggsave(filename, plot = facet_species, width =25, height = 25, units = "cm", limitsize = FALSE)
