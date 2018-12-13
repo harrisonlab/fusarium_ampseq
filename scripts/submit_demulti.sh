@@ -2,7 +2,9 @@
 #$ -S /bin/bash
 #$ -cwd
 #$ -l virtual_free=4G
-#$ -l h=blacklace03.blacklace|blacklace04.blacklace|blacklace05.blacklace|blacklace06.blacklace|blacklace07.blacklace|blacklace08.blacklace|blacklace09.blacklace|blacklace10.blacklace|blacklace12.blacklace
+# #$ -l h=blacklace03.blacklace|blacklace04.blacklace|blacklace05.blacklace|blacklace06.blacklace|blacklace07.blacklace|blacklace08.blacklace|blacklace09.blacklace|blacklace10.blacklace|blacklace12.blacklace
+#$ -l h=blacklace05.blacklace|blacklace06.blacklace|blacklace07.blacklace|blacklace08.blacklace|blacklace09.blacklace|blacklace10.blacklace|blacklace12.blacklace
+
 
 R1=$1
 R2=$2
@@ -33,8 +35,13 @@ mkfifo $R.fa
 zcat -f -- $CurDir/$R1 > $F.fa &
 zcat -f -- $CurDir/$R2 > $R.fa &
 
+# zcat -f -- $CurDir/$R1 > $WorkDir/$F.fq
+# zcat -f -- $CurDir/$R2 > $WorkDir/$R.fq
 
-
+# 16S
+P0=16S
+P0F=CCTACGGG[ATGC]GGC[AT]GCAG
+P0R=GACTAC[ACT][ACG]GGGTATCTAATCC
 #ITS
 P1=ITS
 P1F=GTGAATCATCGAATCTTTGAACGC
@@ -42,7 +49,7 @@ P1R=CCGCTTATTGATATGCTTAA[AG]TTCAG
 # TEF
 P2=TEF
 P2F=GGTCACTTGATCTACCAGTGCG
-P2R=CCCA[AG]GCGTACTTGAAGRAAC
+P2R=CCCA[AG]GCGTACTTGAAG[AG]AAC
 # SIX13
 P3=SIX13
 P3F=GCTACTCAAAGTCGTGGACGAG
@@ -50,11 +57,19 @@ P3R=GGCAATATATTCCGTCCATTCTTGG
 # T2 FOCg17143 OG12981
 P4=OG12981
 P4F=CACTTCCTCACTTACTTTACCACTCC
-P4R=GTCATCGCAATCGCCKTCCG
+P4R=GTCATCGCAATCGCC[TG]TCCG
 # T4 orthogroup 13890
 P5=OG13890
 P5F=GCTGTCTTATCACTTATCAGCCTTG
 P5R=CGGTCTGATTTGGTGTCCAGTCG
+# TX orthogroup OG4952
+P6=OG4952
+P6F=CCACACTTGACATGAGGAT[AG]GTC
+P6R=GCTCACGGTCAGATAACTTTGC
+# TX orthogroup 13397
+P7=OG13397
+P7F=CTGGATCTCTGTGACGATCAGA
+P7R=GTCCCTGGCCAAG[CT]ATTTC
 
 # ProgDir=/home/armita/git_repos/emr_repos/scripts/Metabarcoding_pipeline/scripts
 # # $ProgDir/demulti_v2.pl tmpF.fq tmpR.fq $P1F $P1R $P2F $P2R $P3F $P3R $P4F $P4R $P5F $P5R
@@ -62,9 +77,12 @@ P5R=CGGTCTGATTTGGTGTCCAGTCG
 
 ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
 # $ProgDir/demulti.py --FastqF tmpF.fq --FastqR tmpR.fq --primer_loci $P1 $P2 $P3 $P4 $P5 --primersF $P1F $P2F $P3F $P4F $P5F --primersR $P1R $P2R $P3R $P4R $P5R
-$ProgDir/demulti.py --FastqF $F.fa --FastqR $R.fa --primer_loci $P1 $P2 $P3 $P4 $P5 --primersF $P1F $P2F $P3F $P4F $P5F --primersR $P1R $P2R $P3R $P4R $P5R  2>&1 | tee ${Prefix}_demulti.log
+# $ProgDir/demulti.py --FastqF $F.fa --FastqR $R.fa --primer_loci $P1 $P2 $P3 $P4 $P5 $P6 $P7 --primersF $P1F $P2F $P3F $P4F $P5F $P6F $P7F --primersR $P1R $P2R $P3R $P4R $P5R $P6R $P7R 2>&1 | tee ${Prefix}_demulti.log
+$ProgDir/demulti.py --FastqF $F.fa --FastqR $R.fa --primer_loci $P0 $P1 $P2 $P3 $P5 $P6 $P7 --primersF $P0F $P1F $P2F $P3F $P5F $P6F $P7F --primersR $P0R $P1R $P2R $P3R $P5R $P6R $P7R 2>&1 | tee ${Prefix}_demulti.log
+
 
 rm $F.fa $R.fa
 
+# cp * $CurDir/$OutDir/.
 cp *.fq $CurDir/$OutDir/.
 cp *.fastq $CurDir/$OutDir/.
