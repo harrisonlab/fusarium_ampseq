@@ -28,13 +28,25 @@ cd $WorkDir
 # Maximum differences per 100bp have a large effect on how many bases are merged.
 # The final number will still be limited by number of potential errors below.
 MINL=150
-MAXDIFF=5
-# MAXDIFF=10
+
+# if [[ $Locus == '16S' ]]; then
+#   LocusLength=400
+# elif [[ $Locus == 'ITS' ]]; then
+#   LocusLength=400
+# elif [[ $Locus == 'TEF' ]]; then
+#   LocusLength=400
+# elif [[ $Locus == 'TEF' ]]; then
+#   LocusLength=400
+# fi
+  #statements
+# MAXDIFF=5
+MAXDIFF=20
 # LEN=$(( $MINL - $RPL ))
 # Prefix='processing_test'
 ProgDir=/home/deakig/usr/local/bin
 # $ProgDir/usearch -fastq_mergepairs tmpF_ITS.fq -reverse tmpR_ITS.fq -fastqout ${Prefix}.t1  -fastq_pctid 0 -fastq_maxdiffs $(($MINL*${MAXDIFF}/100)) -fastq_minlen $MINL -fastq_minovlen 0 | tee 2>&1 ${Prefix}_mergelog.txt #-fastq_trunctail 25
-$ProgDir/usearch -fastq_mergepairs $CurDir/$F -reverse $CurDir/$R -fastqout ${Prefix}.t1  -fastq_pctid 0 -fastq_maxdiffs $(($MINL*${MAXDIFF}/100)) -fastq_minlen $MINL -fastq_minovlen 0 | tee 2>&1 ${Prefix}_merge.log #-fastq_trunctail 25
+# $ProgDir/usearch -fastq_mergepairs $CurDir/$F -reverse $CurDir/$R -fastqout ${Prefix}.t1  -fastq_pctid 0 -fastq_maxdiffs $(($MINL*${MAXDIFF}/100)) -fastq_minlen $MINL -fastq_minovlen 0 | tee 2>&1 ${Prefix}_merge.log #-fastq_trunctail 25
+$ProgDir/usearch -fastq_mergepairs $CurDir/$F -reverse $CurDir/$R -fastqout ${Prefix}.t1  -fastq_pctid 0 -fastq_maxdiffs $MAXDIFF -fastq_minlen $MINL -fastq_minovlen 0 | tee 2>&1 ${Prefix}_merge.log #-fastq_trunctail 25
 
 # ---
 # Step2 Identify reads containing illimuna adapters
@@ -66,7 +78,11 @@ awk -F"\t" '{print $1}' ${Prefix}.t1.txt|sort|uniq|$ProgDir/adapt_delete.pl ${Pr
 # RPL is reverse primer length
 Primers=primers.fa
 printf \
-">ITS_F
+">16S_F
+CCTACGGGNGGCWGCAG
+>16S_R
+GACTACHVGGGTATCTAATCC
+>ITS_F
 GTGAATCATCGAATCTTTGAACGC
 >ITS_R
 CCGCTTATTGATATGCTTAARTTCAG
@@ -85,7 +101,15 @@ GTCATCGCAATCGCCKTCCG
 >OG13890_F
 GCTGTCTTATCACTTATCAGCCTTG
 >OG13890_R
-CGGTCTGATTTGGTGTCCAGTCG" \
+CGGTCTGATTTGGTGTCCAGTCG
+>OG4952_F
+CCACACTTGACATGAGGATRGTC
+>OG4952_R
+GCTCACGGTCAGATAACTTTGC
+>OG13397_F
+CTGGATCTCTGTGACGATCAGA
+>OG13397_R
+GTCCCTGGCCAAGYATTTC" \
 > $Primers
 # Locus=$(basename $F | cut -f1 -d '-')
 FPL=$(cat $Primers | grep -A1 "${Locus}_F" | tail -n1 | wc -c)
