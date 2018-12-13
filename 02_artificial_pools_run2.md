@@ -72,7 +72,7 @@ Raw sequencing data was symbolicly linked to the working directory:
 ```
 
 
-
+<!--
 #### QC of MiSeq data
 
 programs:
@@ -130,7 +130,7 @@ for F_read in $(ls qc_dna/plate2c/paired/*/*/*/*/F/*fq.gz); do
   ReadCount=$(cat $F_read | gunzip -cf | awk '{s++}END{print s/4}')
   printf "$Locus\t$Pool\t$Dilution\t$TechRep\t$ReadCount\n"
 done > qc_dna/reads_per_sample.tsv
-```
+``` -->
 
 
 # Metabarcoding analysis
