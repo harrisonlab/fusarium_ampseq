@@ -2,7 +2,7 @@
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
-#$ -l virtual_free=4G
+#$ -l virtual_free=2G
 #$ -l h=blacklace05.blacklace|blacklace06.blacklace|blacklace07.blacklace|blacklace08.blacklace|blacklace09.blacklace|blacklace10.blacklace|blacklace12.blacklace
 
 
@@ -20,7 +20,8 @@ cd $WorkDir
 
 # quantify taxa
 ProgDir=/home/deakig/usr/local/bin
-$ProgDir/usearch -otutab $CurDir/$QueryReads -db $CurDir/$RefDb -strand plus -id 0.97 -biomout ${Prefix}_${OtuType}_table.biom -otutabout ${Prefix}_${OtuType}_table.txt -notmatched ${Prefix}_${OtuType}_nomatch.fa -userout ${Prefix}_${OtuType}_hits.out -userfields query+target
+# $ProgDir/usearch -otutab $CurDir/$QueryReads -db $CurDir/$RefDb -strand plus -id 0.97 -biomout ${Prefix}_${OtuType}_table.biom -otutabout ${Prefix}_${OtuType}_table.txt -notmatched ${Prefix}_${OtuType}_nomatch.fa -userout ${Prefix}_${OtuType}_hits.out -userfields query+target
+$ProgDir/usearch -otutab $CurDir/$QueryReads -db $CurDir/$RefDb -strand plus -id 1 -biomout ${Prefix}_${OtuType}_table.biom -otutabout ${Prefix}_${OtuType}_table.txt -notmatched ${Prefix}_${OtuType}_nomatch.fa -userout ${Prefix}_${OtuType}_hits.out -userfields query+target
 # Normalise results to 10000 reads
 $ProgDir/usearch -otutab_norm ${Prefix}_${OtuType}_table.txt -sample_size 10000 -output ${Prefix}_${OtuType}_table_norm.txt
 
