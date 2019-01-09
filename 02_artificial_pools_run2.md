@@ -177,8 +177,8 @@ Run below to demultiplex:
 for DataDir in $(ls -d raw_dna/plate2c/paired/*/*/*/*); do
 # for DataDir in $(ls -d raw_dna/plate2c/paired/*/*/*/* | grep -e 'ITS/soil_pathogens/dilution_100x/rep3' -e 'ITS/soil_pathogens/dilution_10x/pool' -e 'og13397/Fusarium_spp/dilution_100x/rep1'); do
 Jobs=$(qstat | grep 'submit_dem' | grep 'r' | grep 'qw' | wc -l)
-while [ $Jobs -gt 1 ]; do
-sleep 1m
+while [ $Jobs -gt 5 ]; do
+sleep 10s
 printf "."
 Jobs=$(qstat | grep 'submit_dem' | grep 'r' | grep 'qw' | wc -l)
 done
@@ -197,33 +197,34 @@ qsub $ProgDir/submit_demulti.sh $R1 $R2 ${OutDir}
 done
 ```
 
- Summise reads demultiplexed:
+Summise reads demultiplexed:
 ```bash
-printf "RunName\tLocus\tPool\tDilution\tRep\tITS\tTef\tSIX13\tT2\tT4\tTx\tTy\tAmbiguous\n" > demulti_dna/demultiplex_summary.tsv
-for RunDir in $(ls -d demulti_dna/*/*/*/*/*); do
-  Locus=$(echo $RunDir | rev | cut -f4 -d '/' | rev)
-  Pool=$(echo $RunDir | rev | cut -f3 -d '/' | rev)
-  Dilution=$(echo $RunDir | rev | cut -f2 -d '/' | rev)
-  Rep=$(echo $RunDir | rev | cut -f1 -d '/' | rev)
-  RunName=$(basename $RunDir/*_ambiguous.fq | sed 's/_ambiguous.fq//g')
-  ITS=$(ls $RunDir/*ITS.fq)
-  ItsLines=$(cat $ITS | wc -l)
-  TEF=$(ls $RunDir/*TEF.fq)
-  TefLines=$(cat $TEF | wc -l)
-  Six13=$(ls $RunDir/*SIX13.fq)
-  Six13Lines=$(cat $Six13 | wc -l)
-  T2=$(ls $RunDir/*OG12981.fq)
-  T2Lines=$(cat $T2 | wc -l)
-  T4=$(ls $RunDir/*OG13890.fq)
-  T4Lines=$(cat $T4 | wc -l)
-  Tx=$(ls $RunDir/*OG4952.fq)
-  TxLines=$(cat $Tx | wc -l)
-  Ty=$(ls $RunDir/*OG13397.fq)
-  TyLines=$(cat $Ty | wc -l)
-  Ambiguous=$(ls $RunDir/*ambiguous.fq)
-  AmbLines=$(cat $Ambiguous | wc -l)
-  printf "$RunName\t$Locus\t$Pool\t$Dilution\t$Rep\t$ItsLines\t$TefLines\t$Six13Lines\t$T2Lines\t$T4Lines\t$TxLines\t$TyLines\t$AmbLines\n"
-done >> demulti_dna/demultiplex_summary.tsv
+printf "RunName\tLocus\tPool\tDilution\tRep\tITS\tTef\tSIX13\tT4\tT6\tT8\tAmbiguous\n" > demulti_dna/plate2c/demultiplex_summary.tsv
+for RunDir in $(ls -d demulti_dna/plate2c/*/*/*/*); do
+ Locus=$(echo $RunDir | rev | cut -f4 -d '/' | rev)
+ Pool=$(echo $RunDir | rev | cut -f3 -d '/' | rev)
+ Dilution=$(echo $RunDir | rev | cut -f2 -d '/' | rev)
+ Rep=$(echo $RunDir | rev | cut -f1 -d '/' | rev)
+ RunName=$(basename $RunDir/*_ambiguous.fq | sed 's/_ambiguous.fq//g')
+ ITS=$(ls $RunDir/*_R1_*ITS.fq)
+ ItsLines=$(cat $ITS | awk '{s++}END{print s/4}')
+ TEF=$(ls $RunDir/*_R1_*TEF.fq)
+ TefLines=$(cat $TEF | awk '{s++}END{print s/4}')
+ Six13=$(ls $RunDir/*_R1_*SIX13.fq)
+ Six13Lines=$(cat $Six13 | wc -l)
+ # T2=$(ls $RunDir/*OG12981.fq)
+ # T2Lines=$(cat $T2 | wc -l)
+ T4=$(ls $RunDir/*_R1_*OG13890.fq)
+ T4Lines=$(cat $T4 | awk '{s++}END{print s/4}')
+ T6=$(ls $RunDir/*_R1_*OG4952.fq)
+ T6Lines=$(cat $T6 | awk '{s++}END{print s/4}')
+ T8=$(ls $RunDir/*_R1_*OG13397.fq)
+ T8Lines=$(cat $T8 | awk '{s++}END{print s/4}')
+ Ambiguous=$(ls $RunDir/*_R1_*ambiguous.fq)
+ AmbLines=$(cat $Ambiguous | awk '{s++}END{print s/4}')
+ printf "$RunName\t$Locus\t$Pool\t$Dilution\t$Rep\t$ItsLines\t$TefLines\t$Six13Lines\t$T4Lines\t$T6Lines\t$T8Lines\t$AmbLines\n"
+done >> demulti_dna/plate2c/demultiplex_summary.tsv
+ls $PWD/demulti_dna/plate2c/demultiplex_summary.tsv
 ```
 
 From this data thresholding values of cross-contamination as a result of illumina
@@ -237,7 +238,7 @@ attributed to an OTU was set at this value.
 
 In the case of our plate, this was:
 ```bash
-Threshold=1680
+Threshold=210
 ```
 
 
@@ -256,6 +257,7 @@ $PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c AMBIGpre \
 
 
 
+luster
 
 ## Pre-processing
 Script will join PE reads (with a maximum % difference in overlap) remove adapter contamination and filter on minimum size and quality threshold.
@@ -264,30 +266,30 @@ Unfiltered joined reads are saved to unfiltered folder, filtered reads are saved
 
 ```bash
 # for DataDir in $(ls -d demulti_dna/*/*/*/*/* | grep -v 'all_loci'); do
-  for DataDir in $(ls -d demulti_dna/*/*/*/*/* | grep -v 'multiplex'); do
-    Jobs=$(qstat | grep 'sub_pro' | grep 'qw'| wc -l)
-    # while [ $Jobs -gt 1 ]; do
+  for DataDir in $(ls -d demulti_dna/plate2c/*/*/*/* | grep -v 'multiplex'); do
+    # Jobs=$(qstat | grep 'sub_pro' | grep 'qw'| wc -l)
+    # while [ $Jobs -gt 5 ]; do
     #   sleep 10s
     #   printf "."
     #   Jobs=$(qstat | grep 'sub_pro' | grep 'qw'| wc -l)
     # done
     # printf "\n"
     Locus=$(echo $DataDir | cut -f3 -d '/' | sed 's/og/OG/g' | sed 's/TEF1a/TEF/g')
-    Prefix=$(echo $DataDir | cut -f3,4,5,6 -d '/' | sed 's&/&_&g' | sed 's/og/OG/g' | sed 's/TEF1a/TEF/g')
+    Prefix=$(echo $DataDir | cut -f3,4,5,6 -d '/' | sed 's&/&_&g' | sed "s/og/OG/g" | sed 's/pathOG/pathog/g' | sed "s/TEF1a/TEF/g")_${Locus}
     # WorkDir=/data2/scratch2/armita/fusarium_ampseq
     R1=$(ls $DataDir/*_${Locus}.fq | head -n1 | tail -n1)
     R2=$(ls $DataDir/*_${Locus}.fq | head -n2 | tail -n1)
     echo $DataDir
     echo $(basename $R1)
     echo $(basename $R2)
-    OutDir="processed_dna/"$(echo $R1 | rev | cut -f3,4,5,6 -d '/' | rev | sed "s&/og&/OG&g" | sed 's/TEF1a/TEF/g')
+    OutDir="processed_dna/"$(echo $R1 | rev | cut -f3,4,5,6 -d '/' | rev | sed "s/og/OG/g" | sed 's/pathOG/pathog/g' | sed 's/TEF1a/TEF/g')
     # echo $OutDir
     ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
     qsub $ProgDir/sub_process_reads.sh $R1 $R2 $Locus $Prefix $OutDir
   done
 
-for DataDir in $(ls -d demulti_dna/*/*/*/*/* | grep 'multiplex'); do
-  for R1 in $(ls $DataDir/*R1*.fq | grep -v 'ambiguous'); do
+for DataDir in $(ls -d demulti_dna/plate2c/*/*/*/* | grep 'multiplex'); do
+  for R1 in $(ls $DataDir/*_R1*.fq | grep -v 'ambiguous'); do
     R2=$(echo $R1 | sed 's/_R1/_R2/g')
     echo $(basename $R1)
     echo $(basename $R2)
@@ -296,7 +298,7 @@ for DataDir in $(ls -d demulti_dna/*/*/*/*/* | grep 'multiplex'); do
     OutDir="processed_dna/"$(echo $R1 | rev | cut -f3,4,5,6 -d '/' | rev)
     # Jobs=$(qstat | grep 'sub_pro' | grep 'qw'| wc -l)
     # while [ $Jobs -gt 1 ]; do
-    # sleep 1m
+    # sleep 10s
     # printf "."
     # Jobs=$(qstat | grep 'sub_pro' | grep 'qw'| wc -l)
     # done
@@ -306,6 +308,51 @@ for DataDir in $(ls -d demulti_dna/*/*/*/*/* | grep 'multiplex'); do
   done
 done
 ```
+
+
+ Summise reads merged:
+```bash
+printf "RunName\tLocus\tPool\tDilution\tRep\tITS\tTef\tSIX13\tT4\tT6\tT8\tAmbiguous\n" > processed_dna/plate2c/merged_summary.tsv
+for RunDir in $(ls -d demulti_dna/plate2c/*/*/*/*); do
+  Locus=$(echo $RunDir | rev | cut -f4 -d '/' | rev | sed 's/TEF1a/TEF/g' | sed 's/og/OG/' | sed 's/pathOG/pathog/g')
+  Pool=$(echo $RunDir | rev | cut -f3 -d '/' | rev)
+  Dilution=$(echo $RunDir | rev | cut -f2 -d '/' | rev)
+  Rep=$(echo $RunDir | rev | cut -f1 -d '/' | rev)
+  RunName="processed_dna/plate2c/$Locus/$Pool/$Dilution/merged/${Locus}_${Pool}_${Dilution}_${Rep}*"
+  # RunName=$(basename $RunDir/*_ambiguous.fq | sed 's/_ambiguous.fq//g')
+  ItsLines=$(cat ${RunName}*_*ITS_prefilter.fa | grep '>'| wc -l)
+  TefLines=$(cat ${RunName}*_*TEF_prefilter.fa | grep '>'| wc -l)
+  Six13=$(ls $RunDir/*_R1_*SIX13.fq)
+  Six13Lines=$(cat ${RunName}*_*SIX13_prefilter.fa | grep '>'| wc -l)
+  T4Lines=$(cat ${RunName}*_*OG13890_prefilter.fa | grep '>'| wc -l)
+  T6Lines=$(cat ${RunName}*_*OG4952_prefilter.fa | grep '>'| wc -l)
+  T8Lines=$(cat ${RunName}*_*OG13397_prefilter.fa | grep '>'| wc -l)
+  printf "${Locus}_${Pool}_${Dilution}_${Rep}\t$Locus\t$Pool\t$Dilution\t$Rep\t$ItsLines\t$TefLines\t$Six13Lines\t$T4Lines\t$T6Lines\t$T8Lines\n"
+done >> processed_dna/plate2c/merged_summary.tsv
+ls $PWD/processed_dna/plate2c/merged_summary.tsv
+```
+
+
+Summise reads filtered:
+```bash
+printf "RunName\tLocus\tPool\tDilution\tRep\tITS\tTef\tSIX13\tT4\tT6\tT8\tAmbiguous\n" > processed_dna/plate2c/filtered_summary.tsv
+for RunDir in $(ls -d demulti_dna/plate2c/*/*/*/*); do
+  Locus=$(echo $RunDir | rev | cut -f4 -d '/' | rev | sed 's/TEF1a/TEF/g' | sed 's/og/OG/' | sed 's/pathOG/pathog/g')
+  Pool=$(echo $RunDir | rev | cut -f3 -d '/' | rev)
+  Dilution=$(echo $RunDir | rev | cut -f2 -d '/' | rev)
+  Rep=$(echo $RunDir | rev | cut -f1 -d '/' | rev)
+  RunName="processed_dna/plate2c/$Locus/$Pool/$Dilution/filtered/${Locus}_${Pool}_${Dilution}_${Rep}*"
+  ItsLines=$(cat ${RunName}*_*ITS.filtered.fa | grep '>'| wc -l)
+  TefLines=$(cat ${RunName}*_*TEF.filtered.fa | grep '>'| wc -l)
+  Six13Lines=$(cat ${RunName}*_*SIX13.filtered.fa | grep '>'| wc -l)
+  T4Lines=$(cat ${RunName}*_*OG13890.filtered.fa | grep '>'| wc -l)
+  T6Lines=$(cat ${RunName}*_*OG4952.filtered.fa | grep '>'| wc -l)
+  T8Lines=$(cat ${RunName}*_*OG13397.filtered.fa | grep '>'| wc -l)
+  printf "${Locus}_${Pool}_${Dilution}_${Rep}\t$Locus\t$Pool\t$Dilution\t$Rep\t$ItsLines\t$TefLines\t$Six13Lines\t$T4Lines\t$T6Lines\t$T8Lines\n"
+done >> processed_dna/plate2c/filtered_summary.tsv
+ls $PWD/processed_dna/plate2c/filtered_summary.tsv
+```
+
 
 
 ## OTU assignment
@@ -318,7 +365,7 @@ This is mostly a UPARSE pipeline, but usearch (free version) runs out of memory 
 ```bash
   # Concatenate files
   for Locus in ITS TEF SIX13 OG13397 OG13890 OG4952; do
-    OutDir=clustering/$Locus
+    OutDir=clustering/plate2c/$Locus
     mkdir -p $OutDir
     cat processed_dna/plate2c/$Locus/*/*/filtered/*.filtered.fa > $OutDir/${Locus}_concatenated.temp.fa
     cat processed_dna/plate2c/multiplex_*/*/*/filtered/*_${Locus}.filtered.fa >> $OutDir/${Locus}_concatenated.temp.fa
@@ -556,13 +603,14 @@ for Locus in ITS TEF; do
     OutDir=quantified/plate2c/$Locus/$Pool
     QueryReads=$OutDir/${Locus}_reads_appended.fa
     mkdir -p $OutDir
-    cat processed_dna/plate2c/$Locus/$Pool/*/merged/*.fa | cut -f1 -d '.' > $QueryReads
-    Threshold=1680
+    cat processed_dna/plate2c/$Locus/$Pool/*/filtered/*.fa | cut -f1 -d '.' | sed "s/_${Locus}.*/_${Locus}/g" > $QueryReads
+    Threshold=210
+    Identity=0.97
     for OtuType in zOTUs; do
       RefDb=$(ls clustering/$Locus/${Locus}_${OtuType}_taxa.fa)
       Prefix="${Locus}_${Pool}_${OtuType}"
       ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-      qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
+      qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir $Threshold $Identity
     done
   done
 done
@@ -571,13 +619,14 @@ for Locus in TEF SIX13 OG13397 OG13890 OG4952; do
     OutDir=quantified/plate2c/$Locus/$Pool
     QueryReads=$OutDir/${Locus}_reads_appended.fa
     mkdir -p $OutDir
-    cat processed_dna/plate2c/$Locus/$Pool/*/merged/*.fa | cut -f1 -d '.' > $QueryReads
-    Threshold=1680
+    cat processed_dna/plate2c/$Locus/$Pool/*/filtered/*.fa | cut -f1 -d '.' | sed "s/_${Locus}.*/_${Locus}/g" > $QueryReads
+    Threshold=210
+    Identity=1
     for OtuType in zOTUs; do
       RefDb=$(ls clustering/$Locus/${Locus}_${OtuType}_taxa.fa)
       Prefix="${Locus}_${Pool}_${OtuType}"
       ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-      qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
+      qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir $Threshold $Identity
     done
   done
 done
@@ -586,14 +635,16 @@ for Locus in multiplex_PCR; do
   for Pool in Fusarium_spp; do
     OutDir=quantified/plate2c/$Locus/$Pool
     mkdir -p $OutDir
-    Threshold=1680
+    Threshold=210
+    Identity=1
     for OtuType in zOTUs; do
-      for RefDb in $(ls clustering/*/*_${OtuType}_taxa.fa); do
+      for RefDb in $(ls databases/*/*_amplicon_nr_db.fasta | grep -e 'TEF' -e 'SIX13' -e 'OG13890' -e 'OG4952' -e 'OG13397'); do
+        Locus2=$(basename $RefDb | cut -f1 -d '_')
         QueryReads=$OutDir/${Locus}_$(basename $RefDb | cut -f1 -d '_')_reads_appended.fa
-        cat processed_dna/plate2c/$Locus/$Pool/*/merged/*$(basename $RefDb | cut -f1 -d '_')_prefilter.fa | cut -f1 -d '.' > $QueryReads
+        cat processed_dna/plate2c/$Locus/$Pool/*/filtered/*$(basename $RefDb | cut -f1 -d '_').filtered.fa | cut -f1 -d '.' | sed "s/${Locus2}.*/${Locus2}/g" > $QueryReads
         Prefix="${Locus}_$(basename $RefDb | cut -f1 -d '_')_${Pool}_${OtuType}"
         ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-        qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
+        qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir $Threshold $Identity
       done
     done
   done
@@ -603,14 +654,16 @@ for Locus in multiplex_barcoding; do
   for Pool in mixed_pool; do
     OutDir=quantified/plate2c/$Locus/$Pool
     mkdir -p $OutDir
-    Threshold=1680
+    Threshold=210
+    Identity=1
     for OtuType in zOTUs; do
-      for RefDb in $(ls clustering/*/*_${OtuType}_taxa.fa); do
+      for RefDb in $(ls databases/*/*_amplicon_nr_db.fasta | grep -e 'TEF' -e 'SIX13' -e 'OG13890' -e 'OG4952' -e 'OG13397'); do
+        Locus2=$(basename $RefDb | cut -f1 -d '_')
         QueryReads=$OutDir/${Locus}_$(basename $RefDb | cut -f1 -d '_')_reads_appended.fa
-        cat processed_dna/plate2c/$Locus/$Pool/*/merged/*$(basename $RefDb | cut -f1 -d '_')_prefilter.fa | cut -f1 -d '.' > $QueryReads
+        cat processed_dna/plate2c/$Locus/$Pool/*/filtered/*$(basename $RefDb | cut -f1 -d '_').filtered.fa | cut -f1 -d '.' | sed "s/${Locus2}.*/${Locus2}/g" > $QueryReads
         Prefix="${Locus}_$(basename $RefDb | cut -f1 -d '_')_${Pool}_${OtuType}"
         ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-        qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
+        qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir $Threshold $Identity
       done
     done
   done
@@ -639,13 +692,15 @@ This was run for normalised and unormalised data and using OTU and zOTU data.
 
 
 ```bash
+cd AHDB_new/plate2c
 for File in $(ls quantified/plate2c/*/*/*_table.txt | grep -v 'multiplex'); do
 Primers=$(echo $File | cut -f4 -d '/')
 Prefix=$(basename $File | sed 's/_table.txt//g')
 OutDir=$(dirname $File)
 echo $Prefix
 ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-$ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 1680
+# $ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 210
+$ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 50
 done
 
 for File in $(ls quantified/plate2c/*/*/*_table.txt | grep 'multiplex_barcoding'); do
@@ -654,7 +709,8 @@ Prefix=$(basename $File | sed 's/_table.txt//g')
 OutDir=$(dirname $File)
 echo $Prefix
 ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-$ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 1680
+# $ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 210
+$ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 50
 done
 
 for File in $(ls quantified/plate2c/*/*/*_table.txt | grep 'multiplex_PCR'); do
@@ -663,7 +719,8 @@ Prefix=$(basename $File | sed 's/_table.txt//g')
 OutDir=$(dirname $File)
 echo $Prefix
 ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-$ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 1680
+# $ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 210
+$ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 50
 done
 
 ```
