@@ -28,11 +28,14 @@ from Bio import SeqIO
 ap = argparse.ArgumentParser()
 ap.add_argument('--table',required=True,type=str,help='')
 ap.add_argument('--threshold',required=True,type=int,help='')
+ap.add_argument('--prefix',required=True,type=str,help='')
 conf = ap.parse_args()
 
 threshold = conf.threshold
 with open(conf.table) as f:
     table_lines = f.readlines()
+
+prefix = conf.prefix
 
 #-----------------------------------------------------
 # Step 2
@@ -50,6 +53,7 @@ class Run_obj(object):
         self.test = "hello"
         self.OTU_obj = counts_obj()
         self.species_obj = counts_obj()
+        self.genus_obj = counts_obj()
 
     def OTUs_to_species(self):
         """"""
@@ -58,6 +62,14 @@ class Run_obj(object):
             count = self.OTU_obj.taxa_dict[OTU]
             species = OTU.split(',')[2]
             self.species_obj.add_count(species, count)
+
+    def OTUs_to_genus(self):
+        """"""
+        OTUs = self.OTU_obj.taxa_dict.keys()
+        for OTU in OTUs:
+            count = self.OTU_obj.taxa_dict[OTU]
+            genus = OTU.split(',')[1]
+            self.genus_obj.add_count(genus, count)
 
 class counts_obj(object):
     # """Data associated with a single set of barcodes / primer set.
@@ -118,7 +130,7 @@ for condition in run_conditions:
 # print species_set
 out_line = ['Species']
 out_line.extend(run_conditions)
-print "\t".join(out_line)
+outlines = ["\t".join(out_line)]
 for species in species_set:
     species_count = 0
     out_line = [species]
@@ -129,7 +141,43 @@ for species in species_set:
         out_line.append(str(count))
         species_count += count
     if species_count > 0:
-        print "\t".join(out_line)
+        outlines.append("\t".join(out_line))
 
-# for condition in run_conditions:
-#     print "\t".join([condition, str(results_dict[condition].species_obj.taxa_dict)])
+filename = "".join([prefix, "_table_by_spp.txt"])
+f = open(filename,"w")
+f.write("\n".join(outlines))
+f.close()
+
+
+#-----------------------------------------------------
+# Step 5
+# Summarise run information by genus rather than OTU
+#-----------------------------------------------------
+
+genus_set = set()
+for condition in run_conditions:
+    results_dict[condition].OTUs_to_genus()
+    genus_present = results_dict[condition].genus_obj.taxa_dict.keys()
+    for x in genus_present:
+        genus_set.add(x)
+
+# print species_set
+out_line = ['Genus']
+out_line.extend(run_conditions)
+outlines = ["\t".join(out_line)]
+for genus in genus_set:
+    genus_count = 0
+    out_line = [genus]
+    for condition in run_conditions:
+        count = results_dict[condition].genus_obj.taxa_dict[genus]
+        count = np.subtract(count, threshold)
+        count = max(0, count)
+        out_line.append(str(count))
+        species_count += count
+    if species_count > 0:
+        outlines.append("\t".join(out_line))
+
+filename = "".join([prefix, "_table_by_genus.txt"])
+f = open(filename,"w")
+f.write("\n".join(outlines))
+f.close()
