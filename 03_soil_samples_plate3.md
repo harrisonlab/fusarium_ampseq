@@ -322,10 +322,36 @@ usearch hosts databases for some loci. Silva also has a database for the stremen
 https://unite.ut.ee/repository.php
 https://www.arb-silva.de/browser/
 
+The rdp bacterial 16S database was downloaded:
+
+```bash
+qlogin
+
+WorkDir=/home/groups/harrisonlab/project_files/fusarium_ampseq
+cd $WorkDir
+OutDir=databases/16S
+mkdir -p $OutDir
+cd $OutDir
+
+# wget -N https://drive5.com/sintax/rdp_16s_v16.fa.gz
+# wget didnt sucessfully download the file so i downloaded the file to my local
+# computer from: https://drive5.com/sintax/
+# Then copied the file to the cluster:
+# scp /Users/armita/Downloads/rdp_16s_v16.fa.gz cluster:/home/groups/harrisonlab/project_files/fusarium_ampseq/databases/16S/.
+
+gunzip *.gz
+mv rdp_16s_v16.fa rdp_bacterial_16S.fasta
+ProgDir=/home/deakig/usr/local/bin
+$ProgDir/usearch -makeudb_sintax rdp_bacterial_16S.fasta -output rdp_bacterial_16S_sintax.udp
+cd $WorkDir
+
+logout
+```
+
 
 
 ```bash
-for Locus in ITS TEF SIX13 OG13397 OG13890 OG4952; do
+for Locus in 16S ITS TEF SIX13 OG13397 OG13890 OG4952; do
   for Type in zOTUs; do
   # for Type in OTUs zOTUs; do
   OtuFa=$(ls clustering/plate3/$Locus/${Locus}_${Type}.fa)
@@ -346,14 +372,15 @@ done
     for Field in onion daffodil stocks; do
       OutDir=quantified/plate3/$Locus/$Field
       mkdir -p $OutDir
-      Threshold=100
+      Threshold=114
+      Identity=0.97
       for OtuType in zOTUs; do
-        for RefDb in $(ls clustering/plate3/*/*_${OtuType}_taxa.fa | grep -e '16S' -e 'ITS' | grep 'ITS'); do
+        for RefDb in $(ls clustering/plate3/*/*_${OtuType}_taxa.fa | grep -e '16S' -e 'ITS' | grep '16S'); do
           QueryReads=$OutDir/${Locus}_$(basename $RefDb | cut -f1 -d '_')_reads_appended.fa
           cat processed_dna/plate3/$Locus/$Field/*/merged/*$(basename $RefDb | cut -f1 -d '_')_prefilter.fa | cut -f1 -d '.' | sed 's/mix-/mix_/g' > $QueryReads
           Prefix="${Locus}_$(basename $RefDb | cut -f1 -d '_')_$Field_${OtuType}"
           ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-          qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
+          qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir $Threshold $Identity
         done
       done
     done
@@ -366,7 +393,8 @@ done
     for Field in onion daffodil stocks; do
       OutDir=quantified/plate3/$Locus/$Field
       mkdir -p $OutDir
-      Threshold=100
+      Threshold=114
+      Identity=1
       for OtuType in zOTUs; do
         # for RefDb in $(ls clustering/plate3/*/*_${OtuType}_taxa.fa | grep -e 'TEF' -e 'SIX13' -e 'OG13890' -e 'OG4952'); do
         for RefDb in $(ls databases/*/*_amplicon_nr_db.fasta | grep -e 'TEF' -e 'SIX13' -e 'OG13890' -e 'OG4952'); do
@@ -376,37 +404,20 @@ done
           cat processed_dna/plate3/$Locus/$Field/*/filtered/*$(basename $RefDb | cut -f1 -d '_').filtered.fa | cut -f1 -d '.' | sed "s/${Locus2}.*/${Locus2}/g" | sed 's/mix-/mix_/g' > $QueryReads
           Prefix="${Locus}_$(basename $RefDb | cut -f1 -d '_')_$Field_${OtuType}"
           ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-          qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
+          qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir $Threshold $Identity
         done
       done
     done
   done
 ```
 
-<!-- ```bash
-  for Locus in mix-C; do
-    for Field in onion daffodil stocks; do
-      OutDir=quantified/plate3/$Locus/$Field
-      mkdir -p $OutDir
-      Threshold=100
-      for OtuType in zOTUs; do
-        for RefDb in $(ls clustering/plate3/*/*_${OtuType}_taxa.fa | grep -e 'TEF' -e 'SIX13' -e 'OG13890' -e 'OG4952' -e 'OG13397'); do
-          QueryReads=$OutDir/${Locus}_$(basename $RefDb | cut -f1 -d '_')_reads_appended.fa
-          cat processed_dna/plate3/$Locus/$Field/*/merged/*$(basename $RefDb | cut -f1 -d '_')_prefilter.fa | cut -f1 -d '.' | sed 's/mix-/mix_/g' > $QueryReads
-          Prefix="${Locus}_$(basename $RefDb | cut -f1 -d '_')_$Field_${OtuType}"
-          ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-          qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
-        done
-      done
-    done
-  done
-``` -->
 ```bash
   for Locus in mix-C; do
     for Field in onion daffodil stocks; do
       OutDir=quantified/plate3/$Locus/$Field
       mkdir -p $OutDir
-      Threshold=100
+      Threshold=114
+      Identity=1
       for OtuType in zOTUs; do
         for RefDb in $(ls databases/*/*_amplicon_nr_db.fasta | grep -e 'TEF' -e 'SIX13' -e 'OG13890' -e 'OG4952' -e 'OG13397'); do
           Locus2=$(basename $RefDb | cut -f1 -d '_')
@@ -414,7 +425,7 @@ done
           cat processed_dna/plate3/$Locus/$Field/*/filtered/*$(basename $RefDb | cut -f1 -d '_').filtered.fa | cut -f1 -d '.' | sed "s/${Locus2}.*/${Locus2}/g" | sed 's/mix-/mix_/g' > $QueryReads
           Prefix="${Locus}_$(basename $RefDb | cut -f1 -d '_')_$Field_${OtuType}"
           ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-          qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir
+          qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir $Threshold $Identity
         done
       done
     done
@@ -427,4 +438,103 @@ done
   rm quantified/plate3/*/*/*.fa
   rm quantified/plate3/*/*/*_hits.out
   ls -d $PWD/quantified/plate3
+```
+
+
+
+```bash
+cd /Users/armita/Downloads/AHDB_new/plate3
+
+for File in $(ls quantified/mix-B/*/mix-B_TEF_zOTUs_zOTUs_table.txt); do
+Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
+OutDir=$(dirname $File | sed 's/quantified/plots/g')
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_TEF.r --OTU_table $File --prefix $OutDir/$Prefix
+done
+
+for File in $(ls quantified/mix-B/*/mix-B_*_zOTUs_zOTUs_table.txt | grep -v 'TEF'); do
+Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
+OutDir=$(dirname $File | sed 's/quantified/plots/g')
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_SIX13.r --OTU_table $File --prefix $OutDir/$Prefix
+done
+```
+
+```bash
+for File in $(ls quantified/mix-C/*/mix-C_TEF_zOTUs_zOTUs_table.txt); do
+Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
+OutDir=$(dirname $File | sed 's/quantified/plots/g')
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_TEF.r --OTU_table $File --prefix $OutDir/$Prefix
+done
+
+for File in $(ls quantified/mix-C/*/mix-C_*_zOTUs_zOTUs_table.txt | grep -v 'TEF'); do
+Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
+OutDir=$(dirname $File | sed 's/quantified/plots/g')
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_SIX13.r --OTU_table $File --prefix $OutDir/$Prefix
+done
+```
+
+
+```bash
+for File in $(ls quantified/mix-A/*/mix-A_ITS_zOTUs_zOTUs_table.txt); do
+Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
+OutDir=$(dirname $File | sed 's/quantified/plots/g')
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_ITS.r --OTU_table $File --prefix $OutDir/$Prefix
+done
+
+for File in $(ls quantified/mix-A/*/mix-A_16S_zOTUs_zOTUs_table.txt); do
+Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
+OutDir=$(dirname $File | sed 's/quantified/plots/g')
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_16S.r --OTU_table $File --prefix $OutDir/$Prefix
+done
+```
+
+```bash
+cd /Users/armita/Downloads/AHDB_new/plate3
+
+OnionTab=$(ls quantified/mix-A/onion/mix-A_16S_zOTUs_zOTUs_table.txt)
+DaffodilTab=$(ls quantified/mix-A/daffodil/mix-A_16S_zOTUs_zOTUs_table.txt)
+StocksTab=$(ls quantified/mix-A/stocks/mix-A_16S_zOTUs_zOTUs_table.txt)
+Prefix="mix-A_16S_by_field"
+OutDir="plots/mix-A"
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_16s_all_fields.r --OTU_table_onion $OnionTab --OTU_table_daffodil $DaffodilTab --OTU_table_stocks $StocksTab --prefix $OutDir/$Prefix
+
+OnionTab=$(ls quantified/mix-A/onion/mix-A_ITS_zOTUs_zOTUs_table.txt)
+DaffodilTab=$(ls quantified/mix-A/daffodil/mix-A_ITS_zOTUs_zOTUs_table.txt)
+StocksTab=$(ls quantified/mix-A/stocks/mix-A_ITS_zOTUs_zOTUs_table.txt)
+Prefix="mix-A_ITS_by_field"
+OutDir="plots/mix-A"
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_16s_all_fields.r --OTU_table_onion $OnionTab --OTU_table_daffodil $DaffodilTab --OTU_table_stocks $StocksTab --prefix $OutDir/$Prefix
+
+OnionTab=$(ls quantified/mix-B/onion/mix-B_TEF_zOTUs_zOTUs_table.txt)
+DaffodilTab=$(ls quantified/mix-B/daffodil/mix-B_TEF_zOTUs_zOTUs_table.txt)
+StocksTab=$(ls quantified/mix-B/stocks/mix-B_TEF_zOTUs_zOTUs_table.txt)
+Prefix="mix-B_TEF_by_field"
+OutDir="plots/mix-B"
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_TEF_all_fields.r --OTU_table_onion $OnionTab --OTU_table_daffodil $DaffodilTab --OTU_table_stocks $StocksTab --prefix $OutDir/$Prefix
 ```
