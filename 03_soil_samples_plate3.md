@@ -445,7 +445,7 @@ done
 ```bash
 cd /Users/armita/Downloads/AHDB_new/plate3
 
-for File in $(ls quantified/mix-B/*/mix-B_TEF_zOTUs_zOTUs_table.txt); do
+for File in $(ls quantified/mix-*/*/mix-*_TEF_zOTUs_zOTUs_table.txt | grep -v 'daffodil'); do
 Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
 OutDir=$(dirname $File | sed 's/quantified/plots/g')
 mkdir -p $OutDir
@@ -454,7 +454,7 @@ ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scrip
 $ProgDir/plot_plate3_TEF.r --OTU_table $File --prefix $OutDir/$Prefix
 done
 
-for File in $(ls quantified/mix-B/*/mix-B_*_zOTUs_zOTUs_table.txt | grep -v 'TEF'); do
+for File in $(ls quantified/mix-*/*/mix-*_*_zOTUs_zOTUs_table.txt | grep -v 'TEF' | grep -v 'daffodil' | grep -e 'OG4952' -e 'OG13397'); do
 Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
 OutDir=$(dirname $File | sed 's/quantified/plots/g')
 mkdir -p $OutDir
@@ -464,7 +464,7 @@ $ProgDir/plot_plate3_SIX13.r --OTU_table $File --prefix $OutDir/$Prefix
 done
 ```
 
-```bash
+<!-- ```bash
 for File in $(ls quantified/mix-C/*/mix-C_TEF_zOTUs_zOTUs_table.txt); do
 Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
 OutDir=$(dirname $File | sed 's/quantified/plots/g')
@@ -483,10 +483,10 @@ ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scrip
 $ProgDir/plot_plate3_SIX13.r --OTU_table $File --prefix $OutDir/$Prefix
 done
 ```
-
+ -->
 
 ```bash
-for File in $(ls quantified/mix-A/*/mix-A_ITS_zOTUs_zOTUs_table.txt); do
+for File in $(ls quantified/mix-A/*/mix-A_ITS_zOTUs_zOTUs_table.txt | grep -v 'daffodil'); do
 Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
 OutDir=$(dirname $File | sed 's/quantified/plots/g')
 mkdir -p $OutDir
@@ -495,7 +495,7 @@ ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scrip
 $ProgDir/plot_plate3_ITS.r --OTU_table $File --prefix $OutDir/$Prefix
 done
 
-for File in $(ls quantified/mix-A/*/mix-A_16S_zOTUs_zOTUs_table.txt); do
+for File in $(ls quantified/mix-A/*/mix-A_16S_zOTUs_zOTUs_table.txt | grep -v 'daffodil'); do
 Prefix=$(basename $File | sed 's/_zOTUs_zOTUs_table.txt//g')
 OutDir=$(dirname $File | sed 's/quantified/plots/g')
 mkdir -p $OutDir
@@ -537,4 +537,28 @@ mkdir -p $OutDir
 echo $Prefix
 ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
 $ProgDir/plot_plate3_TEF_all_fields.r --OTU_table_onion $OnionTab --OTU_table_daffodil $DaffodilTab --OTU_table_stocks $StocksTab --prefix $OutDir/$Prefix
+
+for Locus in SIX13 OG13890 OG4952; do
+OnionTab=$(ls quantified/mix-B/onion/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
+DaffodilTab=$(ls quantified/mix-B/daffodil/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
+StocksTab=$(ls quantified/mix-B/stocks/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
+Prefix="mix-B_${Locus}_by_field"
+OutDir="plots/mix-B"
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_fsp_loci_all_fields.r --OTU_table_onion $OnionTab --OTU_table_daffodil $DaffodilTab --OTU_table_stocks $StocksTab --prefix $OutDir/$Prefix
+done
+
+for Locus in SIX13 OG13890 OG4952; do
+OnionTab=$(ls quantified/mix-B/onion/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
+DaffodilTab=$(ls quantified/mix-B/daffodil/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
+StocksTab=$(ls quantified/mix-B/stocks/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
+Prefix="mix-B_${Locus}_by_field_total"
+OutDir="plots/mix-B"
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_fsp_loci_all_fields_total_counts.r --OTU_table_onion $OnionTab --OTU_table_daffodil $DaffodilTab --OTU_table_stocks $StocksTab --prefix $OutDir/$Prefix
+done
 ```
