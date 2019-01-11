@@ -97,11 +97,14 @@ df1_stocks$Species <- sapply( x, "[", 1)
 df1_total <- merge(x=df1_onion, y=df1_daffodil, by=c("OTU ID", "Species"), all=TRUE)
 df1_total <- merge(x=df1_total, y=df1_stocks, by=c("OTU ID", "Species"), all=TRUE)
 df1_total$Species <- gsub("Gibberella","Fusarium",df1_total$Species,ignore.case=F)
-# df1_total$Species <- gsub("_"," ",df1_total$Species,ignore.case=F)
-df1_total$Species <- gsub("_[a-zA-Z0-9]+?$","",df1_total$Species,ignore.case=F, perl=T)
+df1_total$Species <- gsub("_[a-zA-Z0-9-]+?$","",df1_total$Species,ignore.case=F, perl=T)
 
-df1_total$Species <- gsub('F.',"Fusarium_",df1_total$Species,ignore.case=F)
-df1_total$Species <- gsub("oxysporum_.*","oxysporum",df1_total$Species,ignore.case=F, perl=T)
+# df1_total$Species
+df1_total$Species <- gsub('F\\.',"Fusarium ",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub("oxysporum.*","oxysporum",df1_total$Species,ignore.case=F, perl=T)
+df1_total$Species <- gsub("_"," ",df1_total$Species,ignore.case=F)
+
+# df1_total$Species <- as.factor(df1_total$Species)
 
 #--
 # By Species
@@ -145,8 +148,9 @@ dfx$X1 <- NULL
 dfx$X2 <- NULL
 dfx$X3 <- NULL
 dfx$Species <- rownames(dfx)
+dfx$Species <- gsub("\\."," ",dfx$Species,ignore.case=F)
 
-dfy <- merge(dfx, df6, by="Species")
+dfy <- merge(dfx, df6, by="Species", all = TRUE)
 
 df7 <- dfy[ which(dfy$keep == TRUE),]
 
