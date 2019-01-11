@@ -73,6 +73,8 @@ df1$Genus <- gsub("Gp","Unkown group ",df1$Genus,ignore.case=F)
 df1$Genus <- gsub("_"," ",df1$Genus,ignore.case=F)
 df1$Genus <- gsub("genera incertae sedis","(incertae sedis)",df1$Genus,ignore.case=F)
 df1$Genus <- gsub("Giberella","Fusarium",df1$Genus,ignore.case=F)
+df1$Genus <- gsub("/"," ",df1$Genus,ignore.case=F)
+df1$Genus <- gsub("\\-","",df1$Genus,ignore.case=F)
 
 #--
 # By Genus
@@ -98,7 +100,30 @@ df5 <- merge(df3,df4,by=c("Mix", "Field", "Bed", "Sample", "Locus"))
 
 df5$norm <- ((df5$Counts / df5$Total) * 1000)
 df6 <- summarySE(df5[ which(df5$Total > 1000),], measurevar="norm", groupvars=c(c("Mix", "Field", "Bed", "Locus", "Genus")))
-df7 <- df6[ which(df6$norm > 10),]
+# df7 <- df6[ which(df6$norm > 10),]
+
+df6$id = numeric(nrow(df6))
+for (i in 1:nrow(df6)){
+   dat_temp <- df6[1:i,]
+   df6[i,]$id <- nrow(dat_temp[dat_temp$Genus == df6[i,]$Genus,])
+ }
+dfx <- dcast(df6, id~Genus, value = 'value', value.var = 'norm')
+dfx$id <- NULL
+dfx <- data.frame(apply(dfx, 2, sort, decreasing=T))
+y <- as.logical(dfx[1,] > 10)
+dfx <- data.frame(t(dfx))
+dfx$keep <- y
+dfx$X1 <- NULL
+dfx$X2 <- NULL
+dfx$X3 <- NULL
+dfx$Genus <- rownames(dfx)
+dfx$Genus <- gsub("\\."," ",dfx$Genus,ignore.case=F)
+dfx$Genus <- gsub(" incertae sedis ","(incertae sedis)",dfx$Genus,ignore.case=F)
+
+dfx$Genus
+df6$Genus
+dfy <- merge(dfx, df6, by="Genus", all = TRUE)
+df7 <- dfy[ which(dfy$keep == TRUE),]
 
 facet_Genus<-ggplot(data=subset(df7), aes(x=Genus, y=norm))
 # facet_Genus <- facet_Genus + scale_y_continuous(limits = c(0, 1000))
