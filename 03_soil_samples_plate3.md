@@ -425,7 +425,7 @@ done
           cat processed_dna/plate3/$Locus/$Field/*/filtered/*$(basename $RefDb | cut -f1 -d '_').filtered.fa | cut -f1 -d '.' | sed "s/${Locus2}.*/${Locus2}/g" | sed 's/mix-/mix_/g' > $QueryReads
           Prefix="${Locus}_$(basename $RefDb | cut -f1 -d '_')_$Field_${OtuType}"
           ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
-          qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir $Threshold $Identity
+          echo "qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir $Threshold $Identity"
         done
       done
     done
@@ -560,5 +560,17 @@ mkdir -p $OutDir
 echo $Prefix
 ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
 $ProgDir/plot_plate3_fsp_loci_all_fields_total_counts.r --OTU_table_onion $OnionTab --OTU_table_daffodil $DaffodilTab --OTU_table_stocks $StocksTab --prefix $OutDir/$Prefix
+done
+
+for Locus in OG13397; do
+OnionTab=$(ls quantified/mix-C/onion/mix-C_${Locus}_zOTUs_zOTUs_table.txt)
+DaffodilTab=$(ls quantified/mix-C/daffodil/mix-C_${Locus}_zOTUs_zOTUs_table.txt)
+StocksTab=$(ls quantified/mix-C/stocks/mix-C_${Locus}_zOTUs_zOTUs_table.txt)
+Prefix="mix-C_${Locus}_by_field"
+OutDir="plots/mix-C"
+mkdir -p $OutDir
+echo $Prefix
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
+$ProgDir/plot_plate3_fsp_loci_all_fields.r --OTU_table_onion $OnionTab --OTU_table_daffodil $DaffodilTab --OTU_table_stocks $StocksTab --prefix $OutDir/$Prefix
 done
 ```
