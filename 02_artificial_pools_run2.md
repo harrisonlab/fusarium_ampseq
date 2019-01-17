@@ -257,8 +257,6 @@ $PROJECT_FOLDER/metabarcoding_pipeline/scripts/PIPELINE.sh -c AMBIGpre \
 
 
 
-luster
-
 ## Pre-processing
 Script will join PE reads (with a maximum % difference in overlap) remove adapter contamination and filter on minimum size and quality threshold.
 Unfiltered joined reads are saved to unfiltered folder, filtered reads are saved to filtered folder.
@@ -608,7 +606,7 @@ for Locus in ITS TEF; do
     Identity=0.97
     for OtuType in zOTUs; do
       RefDb=$(ls clustering/$Locus/${Locus}_${OtuType}_taxa.fa)
-      Prefix="${Locus}_${Pool}_${OtuType}"
+      Prefix="${Locus}_${Pool}"
       ProgDir=/home/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts
       qsub $ProgDir/submit_quantification.sh $QueryReads $RefDb $OtuType $Prefix $OutDir $Threshold $Identity
     done
@@ -691,8 +689,8 @@ This was run for normalised and unormalised data and using OTU and zOTU data.
 
 
 
-```bash
-cd AHDB_new/plate2c
+<!-- ```bash
+cd /Users/armita/Downloads/AHDB_new/plate2c
 for File in $(ls quantified/plate2c/*/*/*_table.txt | grep -v 'multiplex'); do
 Primers=$(echo $File | cut -f4 -d '/')
 Prefix=$(basename $File | sed 's/_table.txt//g')
@@ -722,5 +720,36 @@ ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scrip
 # $ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 210
 $ProgDir/plot_OTUs_local.r --OTU_table $File --prefix $OutDir/$Prefix --threshold 50
 done
+``` -->
 
+```bash
+cd /Users/armita/Downloads/AHDB_new/plate2c
+
+for File in $(ls quantified/plate2c/*/*/*_table.txt | grep -v 'multiplex' | grep 'ITS'); do
+Primers=$(echo $File | cut -f4 -d '/');
+Prefix=$(basename $File | sed 's/_table.txt//g');
+OutDir=$(dirname $File)_new;
+mkdir -p $OutDir;
+echo $Prefix;
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts $ProgDir/plate2c/plot_plate2c_ITS.r --OTU_table $File --prefix $OutDir/$Prefix;
+done
+
+for File in $(ls quantified/plate2c/*/*/*_table.txt | grep -v 'multiplex' | grep 'TEF'); do
+Primers=$(echo $File | cut -f4 -d '/');
+Prefix=$(basename $File | sed 's/_table.txt//g');
+OutDir=$(dirname $File)_new;
+mkdir -p $OutDir;
+echo $Prefix;
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts $ProgDir/plate2c/plot_plate2c_TEF.r --OTU_table $File --prefix $OutDir/$Prefix;
+done
+
+for File in $(ls quantified/plate2c/*/*/*_table.txt | grep -v 'multiplex' | grep 'SIX13'); do
+# for File in $(ls quantified/plate2c/*/*/*_table.txt | grep -v 'multiplex' | grep -v -e 'ITS' -e 'TEF' -e 'SIX13'); do
+Primers=$(echo $File | cut -f4 -d '/');
+Prefix=$(basename $File | sed 's/_table.txt//g');
+OutDir=$(dirname $File)_new;
+mkdir -p $OutDir;
+echo $Prefix;
+ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts $ProgDir/plate2c/plot_plate2c_path_loci.r --OTU_table $File --prefix $OutDir/$Prefix;
+done
 ```
