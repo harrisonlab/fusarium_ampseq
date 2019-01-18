@@ -160,17 +160,16 @@ facet_Species<-ggplot(data=subset(df7), aes(x=Species, y=norm))
 # facet_Species <- facet_Species + scale_y_continuous(limits = c(0, 1000))
 facet_Species <- facet_Species + geom_bar(stat="identity")
 facet_Species <- facet_Species + theme(axis.text.x=element_text(angle = -45, hjust = 0))
-facet_Species <- facet_Species + ylab('Normalised reads') + xlab('')
+facet_Species <- facet_Species + ylab('Read count (per 1000 mapped reads)') + xlab('')
 facet_Species <- facet_Species + geom_errorbar(aes(ymin=norm-se, ymax=norm+se),
                   width=.2,                    # Width of the error bars
                   position=position_dodge(.9))
-facet_Species <- facet_Species + theme(plot.margin=unit(c(1,3,0.5,0.5),"cm"))
+facet_Species <- facet_Species + theme(plot.margin=unit(c(1,1,0.5,0.5),"cm"))
 facet_Species <- facet_Species + facet_grid(Field ~ .)
 # facet_Species <- facet_Species + geom_text(aes(label=round(norm)), vjust=-2.5)
 facet_Species <- facet_Species + geom_text(aes(label=round(norm)),  position = position_stack(vjust = 0.5))
 facet_Species
-
 # prefix <- '/Users/armita/Downloads/AHDB_new/plate3/plots/16S_Fields'
 fig_height <- (length(unique(df2$Field))*5)+5
 filename <- paste(prefix, 'facet_Species.pdf', sep='_')
-ggsave(filename, plot = facet_Species, width =30, height = fig_height, units = "cm", limitsize = FALSE)
+ggsave(filename, plot = facet_Species, width =20, height = fig_height, units = "cm", limitsize = FALSE)

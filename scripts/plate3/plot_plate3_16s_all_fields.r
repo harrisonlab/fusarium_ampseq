@@ -161,11 +161,11 @@ facet_Genus<-ggplot(data=subset(df7), aes(x=Genus, y=norm))
 # facet_Genus <- facet_Genus + scale_y_continuous(limits = c(0, 1000))
 facet_Genus <- facet_Genus + geom_bar(stat="identity")
 facet_Genus <- facet_Genus + theme(axis.text.x=element_text(angle = -45, hjust = 0))
-facet_Genus <- facet_Genus + ylab('Normalised reads') + xlab('')
+facet_Genus <- facet_Genus + ylab('Read count (per 1000 mapped reads)') + xlab('')
 facet_Genus <- facet_Genus + geom_errorbar(aes(ymin=norm-se, ymax=norm+se),
                   width=.2,                    # Width of the error bars
                   position=position_dodge(.9))
-facet_Genus <- facet_Genus + theme(plot.margin=unit(c(1,3,0.5,0.5),"cm"))
+facet_Genus <- facet_Genus + theme(plot.margin=unit(c(1,1,0.5,0.5),"cm"))
 facet_Genus <- facet_Genus + facet_grid(Field ~ .)
 # facet_Genus <- facet_Genus + geom_text(aes(label=round(norm)), vjust=-2.5)
 facet_Genus <- facet_Genus + geom_text(aes(label=round(norm)),  position = position_stack(vjust = 0.5))

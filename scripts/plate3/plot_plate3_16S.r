@@ -99,7 +99,8 @@ colnames(df4) <- c("Mix", "Field", "Bed", "Sample", "Locus", "Total")
 df5 <- merge(df3,df4,by=c("Mix", "Field", "Bed", "Sample", "Locus"))
 
 df5$norm <- ((df5$Counts / df5$Total) * 1000)
-df6 <- summarySE(df5[ which(df5$Total > 1000),], measurevar="norm", groupvars=c(c("Mix", "Field", "Bed", "Locus", "Genus")))
+# df5$Bed
+df6 <- summarySE(df5[ which((df5$Total > 1000) & (df5$Bed != 'pool')),], measurevar="norm", groupvars=c(c("Mix", "Field", "Bed", "Locus", "Genus")))
 # df7 <- df6[ which(df6$norm > 10),]
 
 df6$id = numeric(nrow(df6))
@@ -120,8 +121,8 @@ dfx$Genus <- rownames(dfx)
 dfx$Genus <- gsub("\\."," ",dfx$Genus,ignore.case=F)
 dfx$Genus <- gsub(" incertae sedis ","(incertae sedis)",dfx$Genus,ignore.case=F)
 
-dfx$Genus
-df6$Genus
+# dfx$Genus
+# df6$Genus
 dfy <- merge(dfx, df6, by="Genus", all = TRUE)
 df7 <- dfy[ which(dfy$keep == TRUE),]
 
@@ -129,17 +130,17 @@ facet_Genus<-ggplot(data=subset(df7), aes(x=Genus, y=norm))
 # facet_Genus <- facet_Genus + scale_y_continuous(limits = c(0, 1000))
 facet_Genus <- facet_Genus + geom_bar(stat="identity")
 facet_Genus <- facet_Genus + theme(axis.text.x=element_text(angle = -45, hjust = 0))
-facet_Genus <- facet_Genus + ylab('Normalised reads') + xlab('')
+facet_Genus <- facet_Genus + ylab('Read count (per 1000 mapped reads)') + xlab('')
 facet_Genus <- facet_Genus + geom_errorbar(aes(ymin=norm-se, ymax=norm+se),
                   width=.2,                    # Width of the error bars
                   position=position_dodge(.9))
-facet_Genus <- facet_Genus + theme(plot.margin=unit(c(1,3,0.5,0.5),"cm"))
+facet_Genus <- facet_Genus + theme(plot.margin=unit(c(1,1,0.5,0.5),"cm"))
 facet_Genus <- facet_Genus + facet_grid(Bed ~ .)
 # facet_Genus <- facet_Genus + geom_text(aes(label=round(norm)), vjust=-2.5)
 facet_Genus <- facet_Genus + geom_text(aes(label=round(norm)),  position = position_stack(vjust = 0.5))
 facet_Genus
 
 # prefix <- '/Users/armita/Downloads/AHDB_new/plate3/plots/TEF_FOC'
-fig_height <- (length(unique(df2$Bed))*10)+5
+fig_height <- (length(unique(df2$Bed))*5)+5
 filename <- paste(prefix, 'facet_genus.pdf', sep='_')
-ggsave(filename, plot = facet_Genus, width =50, height = fig_height, units = "cm", limitsize = FALSE)
+ggsave(filename, plot = facet_Genus, width =35, height = fig_height, units = "cm", limitsize = FALSE)

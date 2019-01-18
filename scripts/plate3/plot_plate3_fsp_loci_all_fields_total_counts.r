@@ -101,11 +101,22 @@ df1_total$Species <- gsub("Gibberella","Fusarium",df1_total$Species,ignore.case=
 # df1_total$Species <- gsub("_[a-zA-Z0-9-]+?$","",df1_total$Species,ignore.case=F, perl=T)
 
 # df1_total$Species
-df1_total$Species <- gsub('F\\.',"Fusarium ",df1_total$Species,ignore.case=F)
+# df1_total$Species <- gsub('F\\.',"Fusarium ",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub("F\\.","F. ",df1_total$Species,ignore.case=F)
 # df1_total$Species <- gsub("oxysporum.*","oxysporum",df1_total$Species,ignore.case=F, perl=T)
 df1_total$Species <- gsub("_"," ",df1_total$Species,ignore.case=F)
 df1_total$Species <- gsub("fsp","f.sp.",df1_total$Species,ignore.case=F)
 df1_total$Species <- gsub("/"," ",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub(" FOP5.*","",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub(" Fus2.*","",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub(" Stocks4.*","",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub(" FOP1.*","",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub(" Na5.*","",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub(" FON63.*","",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub("mathioli raphani a","mathioli a f.sp. raphani",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub("mathioli raphani","mathioli f.sp. raphani",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub("mathioli conglutinans","mathioli f.sp. conglutinans",df1_total$Species,ignore.case=F)
+df1_total$Species <- gsub("narcissi pisi","narcissi f.sp. pisi",df1_total$Species,ignore.case=F)
 
 # df1_total$Species <- as.factor(df1_total$Species)
 
@@ -153,6 +164,8 @@ dfx$X3 <- NULL
 dfx$Species <- rownames(dfx)
 dfx$Species <- gsub("\\."," ",dfx$Species,ignore.case=F)
 dfx$Species <- gsub("f sp ","f.sp.",dfx$Species,ignore.case=F)
+dfx$Species <- gsub("F ","F.",dfx$Species,ignore.case=F)
+
 # dfx$Species
 # df6$Species
 
@@ -170,7 +183,7 @@ facet_Species <- facet_Species + ylab('Total reads') + xlab('')
 facet_Species <- facet_Species + geom_errorbar(aes(ymin=Counts-se, ymax=Counts+se),
                   width=.2,                    # Width of the error bars
                   position=position_dodge(.9))
-facet_Species <- facet_Species + theme(plot.margin=unit(c(1,3,0.5,0.5),"cm"))
+facet_Species <- facet_Species + theme(plot.margin=unit(c(1,1,0.5,0.5),"cm"))
 facet_Species <- facet_Species + facet_grid(Field ~ .)
 # facet_Species <- facet_Species + geom_text(aes(label=round(Counts)), vjust=-2.5)
 facet_Species <- facet_Species + geom_text(aes(label=round(Counts)),  position = position_stack(vjust = 0.5))
@@ -179,4 +192,4 @@ facet_Species
 # prefix <- '/Users/armita/Downloads/AHDB_new/plate3/plots/16S_Fields'
 fig_height <- (length(unique(df2$Field))*5)+5
 filename <- paste(prefix, 'facet_Species.pdf', sep='_')
-ggsave(filename, plot = facet_Species, width =15, height = fig_height, units = "cm", limitsize = FALSE)
+ggsave(filename, plot = facet_Species, width =10, height = fig_height, units = "cm", limitsize = FALSE)
