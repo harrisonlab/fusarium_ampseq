@@ -538,7 +538,7 @@ echo $Prefix
 ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scripts/plate3
 $ProgDir/plot_plate3_TEF_all_fields.r --OTU_table_onion $OnionTab --OTU_table_daffodil $DaffodilTab --OTU_table_stocks $StocksTab --prefix $OutDir/$Prefix
 
-for Locus in SIX13 OG13890 OG4952; do
+for Locus in OG4952; do
 OnionTab=$(ls quantified/mix-B/onion/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
 DaffodilTab=$(ls quantified/mix-B/daffodil/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
 StocksTab=$(ls quantified/mix-B/stocks/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
@@ -550,7 +550,7 @@ ProgDir=~/cluster_mount/armita/git_repos/emr_repos/scripts/fusarium_ampseq/scrip
 $ProgDir/plot_plate3_fsp_loci_all_fields.r --OTU_table_onion $OnionTab --OTU_table_daffodil $DaffodilTab --OTU_table_stocks $StocksTab --prefix $OutDir/$Prefix
 done
 
-for Locus in SIX13 OG13890 OG4952; do
+for Locus in SIX13 OG13890; do
 OnionTab=$(ls quantified/mix-B/onion/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
 DaffodilTab=$(ls quantified/mix-B/daffodil/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
 StocksTab=$(ls quantified/mix-B/stocks/mix-B_${Locus}_zOTUs_zOTUs_table.txt)
